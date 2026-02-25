@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Kiosk — Technocit × NFS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    :root {
+      --bg: #0b0f1a;
+      --bg2: #101728;
+      --card: #151d32;
+      --card2: #1b2440;
+      --pri: #22d3ee;
+      --sec: #8b5cf6;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --muted: #475569;
+      --border: #1e293b;
+      --r: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(34, 211, 238, .04), transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, .03), transparent 50%);
+      pointer-events: none;
+      z-index: 0
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 36px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11, 15, 26, .85);
+      backdrop-filter: blur(10px);
+      flex-shrink: 0
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .logo b {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase
+    }
+
+    .logo .lt {
+      color: var(--pri)
+    }
+
+    .logo .ln {
+      color: var(--sec)
+    }
+
+    .logo .lx {
+      color: var(--muted);
+      font-weight: 300;
+      font-size: 15px
+    }
+
+    .clock {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(52, 211, 153, .4);
+      animation: pulse 2s infinite
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* Tabs */
+    nav {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg2)
+    }
+
+    nav button {
+      flex: 1;
+      padding: 15px;
+      background: 0;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      font: 600 14px 'Plus Jakarta Sans', sans-serif;
+      color: var(--muted);
+      cursor: pointer;
+      transition: .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px
+    }
+
+    nav button:hover {
+      color: var(--text2);
+      background: rgba(255, 255, 255, .01)
+    }
+
+    nav button.on {
+      color: var(--pri);
+      border-color: var(--pri);
+      background: rgba(34, 211, 238, .03)
+    }
+
+    nav button svg {
+      width: 18px;
+      height: 18px;
+      opacity: .6
+    }
+
+    nav button.on svg {
+      opacity: 1
+    }
+
+    section {
+      flex: 1;
+      display: none;
+      overflow: hidden
+    }
+
+    section.on {
+      display: flex
+    }
+
+    /* ═══ GENERIC ═══ */
+    #s0 {
+      align-items: center;
+      justify-content: center
+    }
+
+    .gen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 640px;
+      height: 100%;
+      padding: 32px 24px 20px
+    }
+
+    .av-wrap {
+      position: relative;
+      margin-bottom: 12px;
+      flex-shrink: 0
+    }
+
+    .av-glow {
+      position: absolute;
+      inset: -18px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(34, 211, 238, .1), transparent 70%);
+      animation: glow 3s ease-in-out infinite
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: .4
+      }
+
+      50% {
+        transform: scale(1.05);
+        opacity: .9
+      }
+    }
+
+    .av-ring {
+      width: 174px;
+      height: 182px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--pri), var(--sec));
+      position: relative;
+      z-index: 1;
+      overflow: hidden
+    }
+
+    .av-ring canvas {
+      display: block;
+      border-radius: 50%;
+      background: var(--card)
+    }
+
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 22px;
+      margin-bottom: 6px;
+      flex-shrink: 0
+    }
+
+    .bars i {
+      width: 4px;
+      border-radius: 2px;
+      background: var(--pri);
+      display: block;
+      transition: .3s
+    }
+
+    .bars.on i {
+      animation: bar .45s ease-in-out infinite alternate
+    }
+
+    .bars:not(.on) i {
+      height: 3px !important;
+      background: var(--muted);
+      animation: none
+    }
+
+    .bars i:nth-child(1) {
+      height: 7px;
+      animation-delay: 0s
+    }
+
+    .bars i:nth-child(2) {
+      height: 15px;
+      animation-delay: .06s
+    }
+
+    .bars i:nth-child(3) {
+      height: 22px;
+      animation-delay: .12s
+    }
+
+    .bars i:nth-child(4) {
+      height: 11px;
+      animation-delay: .18s
+    }
+
+    .bars i:nth-child(5) {
+      height: 18px;
+      animation-delay: .09s
+    }
+
+    @keyframes bar {
+      0% {
+        transform: scaleY(.25)
+      }
+
+      100% {
+        transform: scaleY(1)
+      }
+    }
+
+    .av-lbl {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 16px;
+      flex-shrink: 0
+    }
+
+    .av-lbl b {
+      color: var(--pri);
+      font-weight: 700
+    }
+
+    .msgs {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 2px 4px 2px 0
+    }
+
+    .msgs::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .msgs::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 8px
+    }
+
+    .bub {
+      max-width: 85%;
+      padding: 14px 18px;
+      font-size: 15px;
+      line-height: 1.6;
+      animation: pop .3s ease;
+      border-radius: var(--r)
+    }
+
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .bub.bot {
+      align-self: flex-start;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px
+    }
+
+    .bub.usr {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(34, 211, 238, .08), rgba(139, 92, 246, .08));
+      border: 1px solid rgba(34, 211, 238, .1);
+      border-top-right-radius: 4px
+    }
+
+    .inp-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      width: 100%;
+      flex-shrink: 0
+    }
+
+    .inp-row input {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font: 15px 'Plus Jakarta Sans', sans-serif;
+      outline: 0;
+      transition: .2s
+    }
+
+    .inp-row input:focus {
+      border-color: var(--pri);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, .08)
+    }
+
+    .inp-row input::placeholder {
+      color: var(--muted)
+    }
+
+    .inp-row button {
+      padding: 14px 28px;
+      border-radius: 100px;
+      border: 0;
+      background: linear-gradient(135deg, var(--pri), var(--sec));
+      color: #fff;
+      font: 600 14px 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      white-space: nowrap
+    }
+
+    .inp-row button:hover {
+      opacity: .9
+    }
+
+    /* ═══ PERSONALISED ═══ */
+    #s1 {
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    /* User Grid */
+    .ugrid-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      overflow-y: auto
+    }
+
+    .ugrid-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-align: center
+    }
+
+    .ugrid-title span {
+      background: linear-gradient(135deg, var(--pri), var(--sec));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text
+    }
+
+    .ugrid-sub {
+      font-size: 14px;
+      color: var(--text2);
+      margin-bottom: 28px;
+      text-align: center
+    }
+
+    .ugrid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      max-width: 800px;
+      width: 100%
+    }
+
+    .ucard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      background: var(--card);
+      cursor: pointer;
+      transition: .25s;
+      text-align: center
+    }
+
+    .ucard:hover {
+      border-color: var(--pri);
+      background: var(--card2);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(34, 211, 238, .06)
+    }
+
+    .ucard:active {
+      transform: translateY(0)
+    }
+
+    .uc-av {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      transition: .2s
+    }
+
+    .ucard:hover .uc-av {
+      border-color: var(--pri);
+      box-shadow: 0 0 12px rgba(34, 211, 238, .15)
+    }
+
+    .uc-av canvas {
+      width: 100%;
+      height: 100%;
+      display: block
+    }
+
+    .uc-nm {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.3
+    }
+
+    .uc-rl {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.2
+    }
+
+    /* Result view */
+    .res-wrap {
+      display: none;
+      flex: 1;
+      flex-direction: row;
+      overflow: hidden
+    }
+
+    .res-wrap.on {
+      display: flex
+    }
+
+    .p-left {
+      width: 360px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 24px;
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(34, 211, 238, .02), rgba(139, 92, 246, .02))
+    }
+
+    .speech {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r) var(--r) var(--r) 4px;
+      padding: 14px 18px;
+      width: 100%;
+      max-width: 300px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 14px;
+      position: relative;
+      min-height: 50px
+    }
+
+    .speech::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--pri), var(--sec));
+      border-radius: var(--r) var(--r) 0 0
+    }
+
+    .tcur {
+      display: inline-block;
+      width: 2px;
+      height: 13px;
+      background: var(--pri);
+      margin-left: 1px;
+      animation: tc .7s infinite;
+      vertical-align: text-bottom
+    }
+
+    @keyframes tc {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+
+    .qa {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 300px;
+      justify-content: center
+    }
+
+    .qa button {
+      padding: 7px 14px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text2);
+      font: 11px 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      transition: .2s
+    }
+
+    .qa button:hover {
+      border-color: var(--pri);
+      color: var(--pri)
+    }
+
+    .p-right {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px
+    }
+
+    .p-right::-webkit-scrollbar {
+      width: 4px
+    }
+
+    .p-right::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 8px
+    }
+
+    .prof {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      animation: up .45s ease
+    }
+
+    @keyframes up {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .pf-av {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid rgba(34, 211, 238, .2)
+    }
+
+    .pf-av canvas {
+      width: 100%;
+      height: 100%;
+      display: block
+    }
+
+    .pf-nm {
+      font-size: 20px;
+      font-weight: 800
+    }
+
+    .pf-dsg {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 2px
+    }
+
+    .pf-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 6px;
+      padding: 5px 12px;
+      border-radius: 100px;
+      background: rgba(52, 211, 153, .08);
+      border: 1px solid rgba(52, 211, 153, .2);
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      letter-spacing: 1px
+    }
+
+    .pf-meta {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 5px;
+      line-height: 1.4
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      animation: up .5s ease
+    }
+
+    .gc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      transition: .2s
+    }
+
+    .gc:hover {
+      border-color: rgba(34, 211, 238, .2)
+    }
+
+    .gc.fw {
+      grid-column: span 2
+    }
+
+    .gi {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .gi.c {
+      background: rgba(34, 211, 238, .08);
+      color: var(--pri)
+    }
+
+    .gi.v {
+      background: rgba(139, 92, 246, .08);
+      color: var(--sec)
+    }
+
+    .gi.g {
+      background: rgba(52, 211, 153, .08);
+      color: var(--green)
+    }
+
+    .gi.o {
+      background: rgba(251, 191, 36, .08);
+      color: var(--amber)
+    }
+
+    .gl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      font-weight: 700
+    }
+
+    .gv {
+      font-size: 16px;
+      font-weight: 700
+    }
+
+    .gs {
+      font-size: 11px;
+      color: var(--text2)
+    }
+
+    .dir-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 2px
+    }
+
+    .dc {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 11px;
+      color: var(--text2)
+    }
+
+    .dn {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pri), var(--sec));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700
+    }
+
+    /* Back button */
+    .back-row {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      flex-shrink: 0;
+      background: var(--bg2)
+    }
+
+    .back-btn {
+      padding: 10px 32px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text2);
+      font: 13px 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      transition: .2s
+    }
+
+    .back-btn:hover {
+      border-color: var(--pri);
+      color: var(--pri)
+    }
+
+    /* Scan overlay */
+    .scan {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(11, 15, 26, .92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 22px;
+      backdrop-filter: blur(8px)
+    }
+
+    .scan.on {
+      display: flex
+    }
+
+    .sc-ring {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 3px solid var(--amber);
+      box-shadow: 0 0 50px rgba(251, 191, 36, .1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      animation: sp 1s infinite
+    }
+
+    @keyframes sp {
+
+      0%,
+      100% {
+        box-shadow: 0 0 30px rgba(251, 191, 36, .08)
+      }
+
+      50% {
+        box-shadow: 0 0 55px rgba(251, 191, 36, .2)
+      }
+    }
+
+    .sc-ring canvas {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      opacity: .8
+    }
+
+    .sc-ln {
+      position: absolute;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+      animation: scd .85s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(251, 191, 36, .3)
+    }
+
+    @keyframes scd {
+      0% {
+        top: 0
+      }
+
+      100% {
+        top: 100%
+      }
+    }
+
+    .sc-txt {
+      font-size: 15px;
+      color: var(--amber);
+      font-weight: 600
+    }
+
+    .sc-sub {
+      font-size: 13px;
+      color: var(--text2)
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    .av-ring .heygen-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 35%;
+      /* border-radius: 50%; */
+      background: var(--card);
+      display: none
+    }
+
+    .av-ring.heygen-active .heygen-video {
+      display: block
+    }
+
+    .av-ring.heygen-active canvas {
+      display: none
+    }
+
+    .heygen-timer {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--amber);
+      padding: 4px 10px;
+      background: rgba(251, 191, 36, .1);
+      border: 1px solid rgba(251, 191, 36, .25);
+      border-radius: 100px;
+    }
+
+    .heygen-timer.hidden {
+      display: none !important
+    }
+
+    .start-avatar-btn {
+      padding: 10px 24px;
+      border-radius: 100px;
+      border: 1px solid var(--pri);
+      background: rgba(34, 211, 238, .1);
+      color: var(--pri);
+      font: 600 13px 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+      transition: .2s;
+      margin-bottom: 12px;
+      flex-shrink: 0
+    }
+
+    .start-avatar-btn:hover {
+      background: rgba(34, 211, 238, .2);
+    }
+
+    .start-avatar-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed
+    }
+
+    .stop-avatar-btn {
+      border-color: var(--rose);
+      background: rgba(251, 113, 133, .1);
+      color: var(--rose)
+    }
+
+    .stop-avatar-btn:hover {
+      background: rgba(251, 113, 133, .2)
+    }
+
+    .inp-row .start-avatar-btn,
+    .inp-row .stop-avatar-btn {
+      padding: 14px 20px;
+      margin-bottom: 0;
+      font-size: 14px
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+</head>
+
+<body>
+
+  <div class="scan" id="scanOv">
+    <div class="sc-ring"><canvas id="scanCv" width="130" height="130"></canvas>
+      <div class="sc-ln"></div>
+    </div>
+    <div class="sc-txt">Identifying face...</div>
+    <div class="sc-sub">Please hold still</div>
+  </div>
+
+  <div class="app">
+    <header>
+      <div class="logo"><b class="lt">Technocit</b><span class="lx">&times;</span><b class="ln">NFS</b></div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span id="heygenTimer" class="heygen-timer hidden"></span>
+        <div class="clock"><span class="dot"></span><span id="clk"></span></div>
+      </div>
+    </header>
+    <nav>
+      <button class="on" onclick="tab(0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path
+            d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+        </svg>Generic Avatar</button>
+      <button onclick="tab(1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path
+            d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        </svg>Personalised Avatar</button>
+    </nav>
+
+    <!-- GENERIC -->
+    <section id="s0" class="on">
+      <div class="gen">
+        <div class="av-wrap">
+          <div class="av-glow"></div>
+          <div class="av-ring" id="genAvRing"><video id="heygenVideo" class="heygen-video" width="168" height="176" autoplay playsinline style="width:168px;height:176px"></video><canvas id="avaCv" width="168" height="176" style="width:168px;height:176px"></canvas>
+          </div>
+        </div>
+        <div class="bars" id="gBars"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="av-lbl"><b>Nadim</b> &middot; Virtual Assistant</div>
+        <button id="startAvatarBtn" class="start-avatar-btn" onclick="startHeyGenAvatar()" style="display:none">Start Conversation</button>
+        <div class="msgs" id="gMsgs">
+          <div class="bub bot">Good evening and welcome to FutureFin Expo 2026. I'm <strong>Nadim</strong>, your virtual assistant. I can help you with check-in, finding your way around the venue, session schedules, speaker information, dining options, and much more.</div>
+        </div>
+        <div id="genInpRow" class="inp-row" style="display:none"><input id="gInp" placeholder="Ask Nadim anything..."
+            onkeydown="if(event.key==='Enter')sendG()"><button onclick="sendG()">Send</button><button id="stopAvatarBtn" class="start-avatar-btn stop-avatar-btn" onclick="closeHeyGenSession()">Stop Conversation</button></div>
+      </div>
+    </section>
+
+    <!-- PERSONALISED -->
+    <section id="s1">
+      <!-- Step 1: User grid -->
+      <div class="ugrid-wrap" id="ugridWrap">
+        <div class="ugrid-title">Select to <span>Check In</span></div>
+        <div class="ugrid-sub">Tap a person to simulate face recognition</div>
+        <div class="ugrid" id="ugrid"></div>
+      </div>
+
+      <!-- Step 2: Result -->
+      <div class="res-wrap" id="resWrap">
+        <div class="p-left">
+          <div class="av-wrap">
+            <div class="av-glow"></div>
+            <div class="av-ring"><canvas id="avaP" width="140" height="140" style="width:140px;height:140px"></canvas>
+            </div>
+          </div>
+          <div class="bars on" id="pBars"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="av-lbl"><b>Nadim</b> &middot; Virtual Assistant</div>
+          <div class="speech" id="pSpeech"></div>
+          <div class="qa"><button onclick="askP('coffee')">Where is coffee?</button><button onclick="askP('wifi')">WiFi
+              details</button><button onclick="askP('parking')">Parking info</button><button
+              onclick="askP('schedule')">Full schedule</button></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <div class="p-right" id="pRight"></div>
+          <div class="back-row"><button class="back-btn" onclick="goBack()">&larr; Back to list</button></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ═══ HEYGEN CONFIG (set apiKey to enable; leave empty for canvas fallback) ═══
+    var HEYGEN_CONFIG = { serverUrl: 'https://api.heygen.com', apiKey: 'sk_V2_hgu_k1Qz2fiafEg_bbWqllRnvf2oNrFe53Itf0zXcdob2RjZ', avatarName: 'Wayne_20240711', voiceId: '' };
+
+    // HeyGen session state
+    var heygenSessionToken = null;
+    var heygenSessionInfo = null;
+    var heygenRoom = null;
+    var heygenMediaStream = null;
+    var heygenSessionActive = false;
+    var heygenTimerIntervalId = null;
+    var heygenSessionEndAt = 0;
+    var HEYGEN_SESSION_DURATION_MS = 3 * 60 * 1000;
+
+    function heygenReady() { return typeof HEYGEN_CONFIG !== 'undefined' && HEYGEN_CONFIG.apiKey && HEYGEN_CONFIG.apiKey.trim() !== ''; }
+
+    async function getHeyGenSessionToken() {
+      var res = await fetch(HEYGEN_CONFIG.serverUrl + '/v1/streaming.create_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Api-Key': HEYGEN_CONFIG.apiKey }
+      });
+      var data = await res.json();
+      if (data && data.data && data.data.token) { heygenSessionToken = data.data.token; return heygenSessionToken; }
+      throw new Error('Failed to get session token');
+    }
+
+    async function createHeyGenSession() {
+      if (!heygenReady() || heygenSessionActive) return;
+      var videoEl = document.getElementById('heygenVideo');
+      var ringEl = document.getElementById('genAvRing');
+      try {
+        await getHeyGenSessionToken();
+        var body = { quality: 'high', avatar_name: HEYGEN_CONFIG.avatarName, version: 'v2', video_encoding: 'H264' };
+        if (HEYGEN_CONFIG.voiceId) body.voice = { voice_id: HEYGEN_CONFIG.voiceId, rate: 1.0 };
+        var res = await fetch(HEYGEN_CONFIG.serverUrl + '/v1/streaming.new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + heygenSessionToken },
+          body: JSON.stringify(body)
+        });
+        var json = await res.json();
+        if (!json || !json.data) throw new Error(json.message || 'streaming.new failed');
+        heygenSessionInfo = json.data;
+        heygenMediaStream = new MediaStream();
+        var LivekitClient = window.LivekitClient || window.livekitClient;
+        if (!LivekitClient) throw new Error('LiveKit not loaded');
+        heygenRoom = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+        heygenRoom.on(LivekitClient.RoomEvent.TrackSubscribed, function (track) {
+          if (track.kind === 'video' || track.kind === 'audio') {
+            heygenMediaStream.addTrack(track.mediaStreamTrack);
+            if (heygenMediaStream.getVideoTracks().length > 0) {
+              videoEl.srcObject = heygenMediaStream;
+              if (ringEl) ringEl.classList.add('heygen-active');
+              heygenSessionActive = true;
+              videoEl.play().catch(function () {});
+              var welcomeMsg = "Good evening and welcome to FutureFin Expo 2026. I'm Nadim, your virtual assistant. I can help you with check-in, finding your way around the venue, session schedules, speaker information, dining options, and much more.";
+              sendTextToAvatar(welcomeMsg, 'repeat');
+            }
+          }
+        });
+        heygenRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, function (track) {
+          if (track.mediaStreamTrack) heygenMediaStream.removeTrack(track.mediaStreamTrack);
+        });
+        heygenRoom.on(LivekitClient.RoomEvent.Disconnected, function () {
+          heygenSessionActive = false;
+          if (ringEl) ringEl.classList.remove('heygen-active');
+        });
+        await fetch(HEYGEN_CONFIG.serverUrl + '/v1/streaming.start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + heygenSessionToken },
+          body: JSON.stringify({ session_id: heygenSessionInfo.session_id })
+        });
+        await heygenRoom.connect(heygenSessionInfo.url, heygenSessionInfo.access_token);
+        heygenSessionActive = true;
+        startSessionTimer();
+        var btn = document.getElementById('startAvatarBtn');
+        if (btn) btn.style.display = 'none';
+        var inpRow = document.getElementById('genInpRow');
+        if (inpRow) inpRow.style.display = 'flex';
+      } catch (e) {
+        console.warn('HeyGen session failed:', e);
+        heygenSessionActive = false;
+        if (ringEl) ringEl.classList.remove('heygen-active');
+        var btn = document.getElementById('startAvatarBtn');
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function startHeyGenAvatar() {
+      if (!heygenReady() || heygenSessionActive) return;
+      var btn = document.getElementById('startAvatarBtn');
+      if (btn) btn.disabled = true;
+      createHeyGenSession().then(function () { if (btn) btn.disabled = false; }).catch(function () { if (btn) btn.disabled = false; });
+    }
+
+    function startSessionTimer() {
+      if (heygenTimerIntervalId) clearInterval(heygenTimerIntervalId);
+      heygenSessionEndAt = Date.now() + HEYGEN_SESSION_DURATION_MS;
+      var timerEl = document.getElementById('heygenTimer');
+      if (timerEl) timerEl.classList.remove('hidden');
+      function update() {
+        var left = Math.max(0, Math.ceil((heygenSessionEndAt - Date.now()) / 1000));
+        var m = Math.floor(left / 60);
+        var s = left % 60;
+        if (timerEl) timerEl.textContent = 'Session: ' + m + ':' + (s < 10 ? '0' : '') + s + ' remaining';
+        if (left <= 0) {
+          clearInterval(heygenTimerIntervalId);
+          heygenTimerIntervalId = null;
+          closeHeyGenSession();
+        }
+      }
+      update();
+      heygenTimerIntervalId = setInterval(update, 1000);
+    }
+
+    function stopSessionTimer() {
+      if (heygenTimerIntervalId) { clearInterval(heygenTimerIntervalId); heygenTimerIntervalId = null; }
+      heygenSessionEndAt = 0;
+      var timerEl = document.getElementById('heygenTimer');
+      if (timerEl) { timerEl.textContent = ''; timerEl.classList.add('hidden'); }
+      var btn = document.getElementById('startAvatarBtn');
+      if (btn) btn.style.display = heygenReady() ? '' : 'none';
+    }
+
+    async function closeHeyGenSession() {
+      stopSessionTimer();
+      var inpRow = document.getElementById('genInpRow');
+      if (inpRow) inpRow.style.display = 'none';
+      var btn = document.getElementById('startAvatarBtn');
+      if (btn) btn.style.display = heygenReady() ? '' : 'none';
+      if (!heygenSessionInfo) return;
+      try {
+        await fetch(HEYGEN_CONFIG.serverUrl + '/v1/streaming.stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + heygenSessionToken },
+          body: JSON.stringify({ session_id: heygenSessionInfo.session_id })
+        });
+      } catch (_) {}
+      if (heygenRoom) { heygenRoom.disconnect(); heygenRoom = null; }
+      var videoEl = document.getElementById('heygenVideo');
+      if (videoEl) videoEl.srcObject = null;
+      var ringEl = document.getElementById('genAvRing');
+      if (ringEl) ringEl.classList.remove('heygen-active');
+      heygenSessionToken = null;
+      heygenSessionInfo = null;
+      heygenMediaStream = null;
+      heygenSessionActive = false;
+    }
+
+    function sendTextToAvatar(text, taskType) {
+      taskType = taskType || 'repeat';
+      if (!heygenSessionActive || !heygenSessionInfo || !heygenSessionToken) return;
+      var plainText = text.replace(/<[^>]+>/g, '');
+      fetch(HEYGEN_CONFIG.serverUrl + '/v1/streaming.task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + heygenSessionToken },
+        body: JSON.stringify({ session_id: heygenSessionInfo.session_id, text: plainText, task_type: taskType })
+      }).catch(function () {});
+    }
+
+    // ═══ AVATAR RENDERER ═══
+    function drawAv(cv, o) {
+      var w = cv.width, h = cv.height, c = cv.getContext('2d'), cx = w / 2, cy = h / 2;
+      c.clearRect(0, 0, w, h);
+      c.beginPath(); c.arc(cx, cy, w / 2, 0, Math.PI * 2); c.fillStyle = o.bg; c.fill();
+      c.fillStyle = o.skin; c.fillRect(cx - w * .07, cy + w * .17, w * .14, w * .14);
+      c.beginPath(); c.ellipse(cx, cy + w * .44, w * .4, w * .24, 0, Math.PI, 0, true); c.fillStyle = o.shirt; c.fill();
+      c.beginPath(); c.ellipse(cx, cy - w * .04, w * .2, w * .24, 0, 0, Math.PI * 2); c.fillStyle = o.skin; c.fill();
+      var hc = o.hc;
+      if (o.h === 'long') { c.beginPath(); c.ellipse(cx, cy - w * .18, w * .22, w * .18, 0, 0, Math.PI * 2); c.fillStyle = hc; c.fill(); c.fillRect(cx - w * .22, cy - w * .15, w * .08, w * .32); c.fillRect(cx + w * .14, cy - w * .15, w * .08, w * .32); c.beginPath(); c.ellipse(cx, cy - w * .23, w * .19, w * .07, 0, 0, Math.PI * 2); c.fill() }
+      else if (o.h === 'short') { c.beginPath(); c.ellipse(cx, cy - w * .18, w * .21, w * .16, 0, 0, Math.PI * 2); c.fillStyle = hc; c.fill() }
+      else if (o.h === 'wavy') { c.beginPath(); c.ellipse(cx, cy - w * .16, w * .23, w * .2, 0, 0, Math.PI * 2); c.fillStyle = hc; c.fill(); c.fillRect(cx - w * .23, cy - w * .1, w * .1, w * .24); c.fillRect(cx + w * .13, cy - w * .1, w * .1, w * .24) }
+      else if (o.h === 'buzz') { c.beginPath(); c.ellipse(cx, cy - w * .17, w * .21, w * .14, 0, 0, Math.PI * 2); c.fillStyle = hc; c.fill() }
+      else if (o.h === 'curly') { for (var a = 0; a < 12; a++) { var an = a * Math.PI / 6; c.beginPath(); c.arc(cx + Math.cos(an) * w * .21, cy - w * .16 + Math.sin(an) * w * .1, w * .06, 0, Math.PI * 2); c.fillStyle = hc; c.fill() } }
+      else if (o.h === 'bun') { c.beginPath(); c.ellipse(cx, cy - w * .18, w * .22, w * .16, 0, 0, Math.PI * 2); c.fillStyle = hc; c.fill(); c.beginPath(); c.arc(cx, cy - w * .35, w * .09, 0, Math.PI * 2); c.fill() }
+      c.fillStyle = o.skin; c.beginPath(); c.ellipse(cx - w * .2, cy - w * .02, w * .03, w * .05, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(cx + w * .2, cy - w * .02, w * .03, w * .05, 0, 0, Math.PI * 2); c.fill();
+      var ey = cy - w * .02, eo = w * .08;
+      c.fillStyle = '#fff'; c.beginPath(); c.ellipse(cx - eo, ey, w * .045, w * .032, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(cx + eo, ey, w * .045, w * .032, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = o.eye || '#3a2a1a'; c.beginPath(); c.arc(cx - eo, ey, w * .025, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(cx + eo, ey, w * .025, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#111'; c.beginPath(); c.arc(cx - eo, ey, w * .013, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(cx + eo, ey, w * .013, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(cx - eo - w * .007, ey - w * .007, w * .006, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(cx + eo - w * .007, ey - w * .007, w * .006, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = hc; c.lineWidth = w * .016; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx - eo - w * .04, ey - w * .055); c.quadraticCurveTo(cx - eo, ey - w * .072, cx - eo + w * .04, ey - w * .05); c.stroke();
+      c.beginPath(); c.moveTo(cx + eo - w * .04, ey - w * .05); c.quadraticCurveTo(cx + eo, ey - w * .072, cx + eo + w * .04, ey - w * .055); c.stroke();
+      var sk2 = dk(o.skin, .12); c.strokeStyle = sk2; c.lineWidth = w * .008;
+      c.beginPath(); c.moveTo(cx, cy + w * .01); c.lineTo(cx - w * .018, cy + w * .055); c.quadraticCurveTo(cx, cy + w * .065, cx + w * .018, cy + w * .055); c.stroke();
+      c.fillStyle = o.lip || '#d4928a'; c.beginPath(); c.moveTo(cx - w * .05, cy + w * .11); c.quadraticCurveTo(cx, cy + w * .085, cx + w * .05, cy + w * .11); c.quadraticCurveTo(cx, cy + w * .125, cx - w * .05, cy + w * .11); c.fill();
+      c.strokeStyle = o.lip || '#c4826a'; c.lineWidth = w * .008; c.beginPath(); c.moveTo(cx - w * .055, cy + w * .108); c.quadraticCurveTo(cx, cy + w * .155, cx + w * .055, cy + w * .108); c.stroke();
+      if (o.gl) { c.strokeStyle = 'rgba(200,210,230,.5)'; c.lineWidth = w * .012; c.beginPath(); c.ellipse(cx - eo, ey, w * .06, w * .045, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(cx + eo, ey, w * .06, w * .045, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(cx - eo + w * .06, ey); c.lineTo(cx + eo - w * .06, ey); c.stroke() }
+    }
+    function dk(h, a) { var r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16); return '#' + [r, g, b].map(function (v) { return Math.max(0, Math.round(v * (1 - a))).toString(16).padStart(2, '0') }).join('') }
+
+    var AVA = { bg: '#0e2a4a', skin: '#f5d0b0', shirt: '#1a5276', h: 'long', hc: '#2c1810', eye: '#4a7c59', lip: '#d4928a' };
+    drawAv(document.getElementById('avaCv'), AVA);
+    drawAv(document.getElementById('avaP'), AVA);
+
+    var P = [
+      {
+        id: "EMP001", nm: "Arun Krishnan", f: "Arun", dg: "Sr. Software Engineer", dp: "Engineering", rp: "Priya Sharma",
+        av: { bg: '#1a2744', skin: '#c8956c', shirt: '#2c5f8a', h: 'short', hc: '#1a1a1a', eye: '#3a2a1a', lip: '#a06050' },
+        hl: "Hall A \u2014 Auditorium", hs: "Main stage \u00b7 500 seats", fl: "Ground Floor", bl: "Block A", st: "A-142", zn: "Zone B \u00b7 Left", ev: "Tech Summit 2026", et: "10 AM\u20144 PM",
+        dr: ["Main Lobby", "Left at Reception", "Glass Corridor", "Hall A Right"], ms: "Session 'Microservices at Scale' at 11:30 AM. Collect badge at registration."
+      },
+      {
+        id: "EMP024", nm: "Sarah Mitchell", f: "Sarah", dg: "Product Manager", dp: "Product", rp: "James Wong",
+        av: { bg: '#2a1a3a', skin: '#f5d0b0', shirt: '#6b3a7d', h: 'wavy', hc: '#5a3825', eye: '#4a7c59', lip: '#d4928a' },
+        hl: "Hall C \u2014 Board Room", hs: "Executive \u00b7 30 seats", fl: "3rd Floor", bl: "Block B Tower", st: "C-08", zn: "Zone A \u00b7 Center", ev: "Q1 Strategy Review", et: "9:30 AM\u201412 PM",
+        dr: ["Elevator to 3F", "Exit Right", "End of Corridor", "Board Room C"], ms: "Strategy deck shared to email. Coffee at 9:15 AM."
+      },
+      {
+        id: "VIS-087", nm: "Ravi Menon", f: "Ravi", dg: "Visitor \u00b7 Client", dp: "TechNova Inc.", rp: "Host: Anjali Desai",
+        av: { bg: '#0d2e2a', skin: '#b87a4a', shirt: '#1a6b5a', h: 'short', hc: '#111', eye: '#2a1a0a', lip: '#905040' },
+        hl: "Hall B \u2014 Conf Room 3", hs: "Mid-size \u00b7 50 seats", fl: "2nd Floor", bl: "Block A", st: "B3-22", zn: "Zone C \u00b7 Visitor", ev: "Partnership Discussion", et: "11 AM\u20141 PM",
+        dr: ["Visitor Badge", "Elevator to 2F", "Turn Right", "3rd Room Left"], ms: "Host Anjali notified. Badge at reception."
+      },
+      {
+        id: "EMP042", nm: "Priya Sharma", f: "Priya", dg: "Engineering Director", dp: "Engineering", rp: "CTO Office",
+        av: { bg: '#1f1a3a', skin: '#d4a07a', shirt: '#4a2d6b', h: 'bun', hc: '#1a1010', eye: '#3a2a1a', lip: '#b87060' },
+        hl: "Hall A \u2014 Auditorium", hs: "Main stage \u00b7 500 seats", fl: "Ground Floor", bl: "Block A", st: "A-001", zn: "Zone A \u00b7 VIP", ev: "Tech Summit 2026", et: "10 AM\u20144 PM",
+        dr: ["Main Lobby", "VIP Entrance Left", "Front Row Direct"], ms: "Opening keynote at 10 AM. Speaker lounge via side door."
+      },
+      {
+        id: "EMP055", nm: "James Wong", f: "James", dg: "VP of Product", dp: "Product", rp: "CEO Office",
+        av: { bg: '#1a2030', skin: '#e8c8a0', shirt: '#2a3a5a', h: 'short', hc: '#2a2018', eye: '#3a4a2a', lip: '#b08070', gl: true },
+        hl: "Hall C \u2014 Board Room", hs: "Executive \u00b7 30 seats", fl: "3rd Floor", bl: "Block B Tower", st: "C-01", zn: "Head of Table", ev: "Q1 Strategy Review", et: "9:30 AM\u201412 PM",
+        dr: ["Exec Elevator to 3F", "Turn Right", "Board Room C"], ms: "Chairing Q1 review. Deck loaded on display."
+      },
+      {
+        id: "EMP061", nm: "Anita Desai", f: "Anita", dg: "UX Design Lead", dp: "Design", rp: "Priya Sharma",
+        av: { bg: '#2a1a28', skin: '#c89060', shirt: '#8a3a5a', h: 'curly', hc: '#1a1010', eye: '#3a2a1a', lip: '#a06050' },
+        hl: "Hall D \u2014 Design Lab", hs: "Workshop \u00b7 40 seats", fl: "1st Floor", bl: "Block A", st: "D-12", zn: "Workshop Area", ev: "Design Sprint", et: "2 PM\u20145 PM",
+        dr: ["Main Lobby", "Right to Wing A", "1F Stairs", "Design Lab D"], ms: "Workshop materials at your station. Whiteboards prepped."
+      },
+      {
+        id: "EMP078", nm: "David Chen", f: "David", dg: "Data Scientist", dp: "Analytics", rp: "VP Data",
+        av: { bg: '#1a2a2a', skin: '#f0d0a8', shirt: '#2a5a4a', h: 'buzz', hc: '#1a1a1a', eye: '#2a3a1a', lip: '#c08070' },
+        hl: "Hall A \u2014 Auditorium", hs: "Main stage \u00b7 500 seats", fl: "Ground Floor", bl: "Block A", st: "A-088", zn: "Zone C \u00b7 Right", ev: "Tech Summit 2026", et: "10 AM\u20144 PM",
+        dr: ["Main Lobby", "Left at Reception", "Glass Corridor", "Hall A"], ms: "Talk 'AI in Production' at 2 PM. Speaker prep room available."
+      },
+      {
+        id: "EMP090", nm: "Fatima Al-Said", f: "Fatima", dg: "Security Architect", dp: "InfoSec", rp: "CISO",
+        av: { bg: '#1a1a30', skin: '#d4a878', shirt: '#3a2a5a', h: 'long', hc: '#111', eye: '#2a1a0a', lip: '#a07060' },
+        hl: "Hall E \u2014 Secure Room", hs: "Restricted \u00b7 20 seats", fl: "Basement B1", bl: "Block B Tower", st: "E-05", zn: "Cleared Personnel", ev: "Security Briefing", et: "8:30\u201410 AM",
+        dr: ["Badge Scan B1", "Elevator to B1", "Security Corridor", "Room E"], ms: "Classified briefing. Store devices in lockers outside."
+      },
+      {
+        id: "INT-003", nm: "Tom Baker", f: "Tom", dg: "Summer Intern", dp: "Engineering", rp: "Arun Krishnan",
+        av: { bg: '#1a3028', skin: '#f5d8b8', shirt: '#2a6a4a', h: 'short', hc: '#6a4a2a', eye: '#4a6a3a', lip: '#c89080' },
+        hl: "Hall A \u2014 Auditorium", hs: "Main stage \u00b7 500 seats", fl: "Ground Floor", bl: "Block A", st: "A-200", zn: "Zone D \u00b7 Back", ev: "Tech Summit 2026", et: "10 AM\u20144 PM",
+        dr: ["Main Lobby", "Left at Reception", "Glass Corridor", "Hall A Back"], ms: "Welcome! Sit with engineering. Mentor Arun in A-142."
+      },
+      {
+        id: "VIS-102", nm: "Lisa Park", f: "Lisa", dg: "Keynote Speaker", dp: "External \u00b7 AI Labs", rp: "Host: Priya Sharma",
+        av: { bg: '#2a1828', skin: '#f0c8a0', shirt: '#7a2a5a', h: 'long', hc: '#3a2014', eye: '#4a3a2a', lip: '#d4928a' },
+        hl: "Hall A \u2014 Auditorium", hs: "Main stage \u00b7 500 seats", fl: "Ground Floor", bl: "Block A", st: "STAGE", zn: "Speaker Podium", ev: "Tech Summit 2026", et: "10 AM\u20144 PM",
+        dr: ["VIP Entrance", "Speaker Lounge", "Stage Access Door"], ms: "Keynote at 10:15 AM. AV team mic at 9:50 in speaker lounge."
+      }
+    ];
+
+    // Build user grid
+    var ugEl = document.getElementById('ugrid');
+    P.forEach(function (u, i) {
+      var d = document.createElement('div'); d.className = 'ucard'; d.onclick = function () { pickUser(i) };
+      var cv = document.createElement('canvas'); cv.width = 56; cv.height = 56; drawAv(cv, u.av);
+      d.innerHTML = '<div class="uc-av"></div><div class="uc-nm">' + u.nm + '</div><div class="uc-rl">' + u.dg + '</div>';
+      d.querySelector('.uc-av').appendChild(cv);
+      ugEl.appendChild(d);
+    });
+
+    // Responses
+    var R = {
+      "schedule": "Today: Tech Summit Hall A (10AM\u20144PM), Q1 Review Hall C (9:30\u201412PM), Partnership Hall B (11AM\u20141PM), Design Sprint Hall D (2\u20145PM), Security Briefing Hall E (8:30\u201410AM).",
+      "hall": "Hall A: Auditorium GF Block A. Hall B: Conf 3 2F Block A. Hall C: Board Room 3F Block B. Hall D: Design Lab 1F Block A. Hall E: Secure B1 Block B.",
+      "wifi": "Guest: <strong>TechNFS-Guest</strong> / <strong>Welcome2026</strong>. Staff: TechNFS-Secure via SSO.",
+      "parking": "Visitors: Lot B main entrance. Staff: basement with access card.",
+      "food": "Cafeteria 1F Block A, 8AM\u20146PM. Coffee lounges every floor.",
+      "restroom": "Near elevators every floor. Accessible on ground floor.",
+      "default": "I can help with schedules, halls, WiFi, parking, dining. What do you need?"
+    };
+    function getR(q) { q = q.toLowerCase(); if (q.match(/schedul|event|today/)) return R.schedule; if (q.match(/hall|room|where|locat/)) return R.hall; if (q.match(/wifi|internet|password/)) return R.wifi; if (q.match(/park|car/)) return R.parking; if (q.match(/food|eat|coffee|lunch/)) return R.food; if (q.match(/restroom|bath|toilet/)) return R.restroom; return R.default }
+
+    // Clock
+    !function ck() { var n = new Date(); document.getElementById('clk').textContent = n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' \u00b7 ' + n.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); setTimeout(ck, 1000) }();
+
+    function tab(i) {
+      if (i !== 0) closeHeyGenSession();
+      document.querySelectorAll('nav button').forEach(function (b, j) { b.classList.toggle('on', j === i) });
+      document.querySelectorAll('section').forEach(function (s, j) { s.classList.toggle('on', j === i) });
+    }
+
+    if (heygenReady()) document.getElementById('startAvatarBtn').style.display = '';
+
+    // Generic
+    function sendG() {
+      var inp = document.getElementById('gInp'), q = inp.value.trim(); if (!q) return; inp.value = '';
+      var m = document.getElementById('gMsgs'); m.innerHTML += '<div class="bub usr">' + esc(q) + '</div>'; m.scrollTop = m.scrollHeight;
+      document.getElementById('gBars').classList.add('on');
+      var reply = getR(q);
+      setTimeout(function () {
+        m.innerHTML += '<div class="bub bot">' + reply + '</div>'; m.scrollTop = m.scrollHeight;
+        document.getElementById('gBars').classList.remove('on');
+        if (heygenSessionActive) sendTextToAvatar(reply, 'repeat');
+      }, 600 + Math.random() * 400);
+    }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+    // Personalised
+    function pickUser(i) {
+      var u = P[i];
+      drawAv(document.getElementById('scanCv'), u.av);
+      document.getElementById('scanOv').classList.add('on');
+      setTimeout(function () { document.getElementById('scanOv').classList.remove('on'); showResult(u) }, 2000);
+    }
+
+    function showResult(u) {
+      document.getElementById('ugridWrap').style.display = 'none';
+      document.getElementById('resWrap').classList.add('on');
+      var now = new Date(), h = now.getHours(), gr = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening',
+        ts = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('pBars').classList.add('on');
+      typeIn(document.getElementById('pSpeech'), "Welcome " + u.f + "! Good " + gr + ". Your hall is " + u.hl + ", " + u.fl + ". " + u.ms + " Need anything? Just ask!", function () { document.getElementById('pBars').classList.remove('on') });
+
+      var dH = ''; u.dr.forEach(function (d, i) { dH += '<div class="dc"><span class="dn">' + (i + 1) + '</span>' + d + '</div>' });
+      var el = document.getElementById('pRight');
+      el.innerHTML =
+        '<div class="prof"><div class="pf-av"><canvas id="pfCv" width="60" height="60"></canvas></div><div><div class="pf-nm">' + u.nm + '</div><div class="pf-dsg">' + u.dg + '</div><div class="pf-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> CHECKED IN \u00b7 ' + ts + '</div><div class="pf-meta">ID: ' + u.id + ' &middot; ' + u.dp + ' &middot; Reports to: ' + u.rp + '</div></div></div>' +
+        '<div class="grid">' +
+        '<div class="gc"><div class="gi c"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg></div><div class="gl">Hall</div><div class="gv">' + u.hl + '</div><div class="gs">' + u.hs + '</div></div>' +
+        '<div class="gc"><div class="gi v"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3 0h.008v.008H18V7.5z"/></svg></div><div class="gl">Location</div><div class="gv">' + u.fl + '</div><div class="gs">' + u.bl + '</div></div>' +
+        '<div class="gc"><div class="gi g"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg></div><div class="gl">Seat</div><div class="gv">' + u.st + '</div><div class="gs">' + u.zn + '</div></div>' +
+        '<div class="gc"><div class="gi o"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg></div><div class="gl">Event</div><div class="gv">' + u.ev + '</div><div class="gs">' + u.et + '</div></div>' +
+        '<div class="gc fw"><div class="gi c"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg></div><div class="gl">Directions</div><div class="dir-row">' + dH + '</div></div></div>';
+      drawAv(document.getElementById('pfCv'), u.av);
+      el.style.animation = 'none'; void el.offsetHeight; el.style.animation = 'up .45s ease';
+    }
+
+    function goBack() {
+      document.getElementById('resWrap').classList.remove('on');
+      document.getElementById('ugridWrap').style.display = '';
+    }
+
+    function askP(q) { document.getElementById('pBars').classList.add('on'); typeIn(document.getElementById('pSpeech'), getR(q), function () { document.getElementById('pBars').classList.remove('on') }) }
+
+    function typeIn(el, t, cb) {
+      el.innerHTML = ''; var i = 0, cur = document.createElement('span'); cur.className = 'tcur'; el.appendChild(cur);
+      !function f() { if (i < t.length) { el.insertBefore(document.createTextNode(t[i]), cur); i++; setTimeout(f, 14 + Math.random() * 10) } else { cur.remove(); if (cb) cb() } }()
+    }
+  </script>
+</body>
+
+</html>
