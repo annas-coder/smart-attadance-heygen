@@ -66,6 +66,10 @@ export async function startSession(
     avatar_name: HEYGEN_CONFIG.avatarName,
     version: 'v2',
     video_encoding: 'H264',
+    background: {
+      type: 'color',
+      value: '#0f1729',
+    },
   };
   if (HEYGEN_CONFIG.voiceId) {
     body.voice = { voice_id: HEYGEN_CONFIG.voiceId, rate: 1.0 };

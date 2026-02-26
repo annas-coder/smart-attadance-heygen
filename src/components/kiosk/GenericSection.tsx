@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Video, VideoOff, Timer } from 'lucide-react';
+import { Send, Sparkles, Video, VideoOff, Timer, Mic, MicOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import AudioBars from './AudioBars';
 import { fetchGeneralChatResponse } from '@/lib/kioskData';
 import { heygenReady, startSession, closeSession, sendTextToAvatar, isSessionActive } from '@/lib/heygenService';
+import { startListening, stopListening, isListening as isVoiceListening } from '@/lib/voiceService';
+import { useChromaKey } from '@/hooks/useChromaKey';
 
 interface Message {
   text: string;
@@ -25,8 +27,12 @@ const GenericSection = () => {
   const [heygenActive, setHeygenActive] = useState(false);
   const [heygenLoading, setHeygenLoading] = useState(false);
   const [timerText, setTimerText] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [partialTranscript, setPartialTranscript] = useState('');
+  const accumulatedRef = useRef('');
   const msgsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useChromaKey(videoRef, heygenActive);
 
   useEffect(() => {
     if (msgsRef.current) {
@@ -36,9 +42,8 @@ const GenericSection = () => {
 
   useEffect(() => {
     return () => {
-      if (isSessionActive()) {
-        closeSession();
-      }
+      if (isVoiceListening()) stopListening();
+      if (isSessionActive()) closeSession();
     };
   }, []);
 
@@ -80,6 +85,11 @@ const GenericSection = () => {
   }, [heygenActive]);
 
   const handleStopConversation = useCallback(async () => {
+    if (isVoiceListening()) {
+      stopListening();
+      setIsRecording(false);
+      setPartialTranscript('');
+    }
     await closeSession();
     setHeygenActive(false);
     setTimerText('');
@@ -87,6 +97,36 @@ const GenericSection = () => {
       videoRef.current.srcObject = null;
     }
   }, []);
+
+  const handleToggleMic = useCallback(() => {
+    if (isRecording) {
+      stopListening();
+      setIsRecording(false);
+      const finalText = (accumulatedRef.current + ' ' + partialTranscript).trim();
+      setPartialTranscript('');
+      accumulatedRef.current = '';
+      if (finalText) {
+        send(finalText);
+      }
+    } else {
+      accumulatedRef.current = '';
+      setPartialTranscript('');
+      startListening({
+        onPartial: (text) => setPartialTranscript(text),
+        onCommitted: (text) => {
+          accumulatedRef.current = (accumulatedRef.current + ' ' + text).trim();
+          setPartialTranscript('');
+        },
+        onError: (err) => {
+          console.warn('Voice error:', err);
+          setIsRecording(false);
+          setPartialTranscript('');
+          accumulatedRef.current = '';
+        },
+        onStateChange: (listening) => setIsRecording(listening),
+      });
+    }
+  }, [isRecording, send, partialTranscript]);
 
   const showHeygenButton = heygenReady() && !heygenActive;
 
@@ -117,7 +157,7 @@ const GenericSection = () => {
             }}
           />
           <div className="relative z-10 w-[160px] h-[160px] rounded-full gradient-ring">
-            <div className="w-full h-full rounded-full overflow-hidden bg-card kiosk-shadow-lg relative">
+            <div className="w-full h-full rounded-full overflow-hidden bg-card kiosk-shadow-lg relative" style={{ background: '#0f1729' }}>
               <img
                 src="/images/nadim-avatar.png"
                 alt="Nadim"
@@ -125,11 +165,15 @@ const GenericSection = () => {
               />
               <video
                 ref={videoRef}
-                className={`absolute inset-0 w-full h-full object-cover object-[center_35%] ${heygenActive ? 'block' : 'hidden'}`}
+                className="hidden"
                 autoPlay
                 playsInline
                 width={160}
                 height={160}
+              />
+              <canvas
+                ref={canvasRef}
+                className={`absolute inset-0 w-full h-full object-cover object-[center_35%] ${heygenActive ? 'block' : 'hidden'}`}
               />
             </div>
           </div>
@@ -266,25 +310,56 @@ const GenericSection = () => {
 
         {/* Input bar */}
         <div className="p-4 pb-10 border-t border-border/20 glass flex-shrink-0">
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/15 text-[12px] text-foreground/70 italic flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+              {(accumulatedRef.current + (partialTranscript ? ' ' + partialTranscript : '')).trim() || 'Listening...'}
+            </motion.div>
+          )}
           <div className="flex items-center gap-3">
             <div className="flex-1 relative input-focus-glow rounded-2xl">
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
-                placeholder="Ask Nadim anything about the expo..."
-                className="w-full py-3.5 pl-5 pr-4 rounded-2xl border border-border/40 bg-card/60 text-foreground text-sm outline-none transition-all duration-300 focus:border-primary/30 placeholder:text-muted-foreground/40 kiosk-shadow"
+                placeholder={isRecording ? 'Listening...' : 'Ask Nadim anything about the expo...'}
+                disabled={isRecording}
+                className="w-full py-3.5 pl-5 pr-4 rounded-2xl border border-border/40 bg-card/60 text-foreground text-sm outline-none transition-all duration-300 focus:border-primary/30 placeholder:text-muted-foreground/40 kiosk-shadow disabled:opacity-50"
               />
             </div>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => send()}
-              className="h-[50px] px-6 rounded-2xl gradient-border text-primary-foreground font-semibold text-sm cursor-pointer transition-all duration-200 kiosk-shadow-glow flex items-center gap-2"
+              disabled={isRecording}
+              className="h-[50px] px-6 rounded-2xl gradient-border text-primary-foreground font-semibold text-sm cursor-pointer transition-all duration-200 kiosk-shadow-glow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={15} />
               Send
             </motion.button>
+            {heygenActive && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleMic}
+                className={`relative h-[50px] w-[50px] rounded-2xl font-semibold text-sm cursor-pointer transition-all duration-200 flex items-center justify-center flex-shrink-0 ${
+                  isRecording
+                    ? 'bg-red-500/15 border-2 border-red-500/50 text-red-500'
+                    : 'border border-border/40 bg-card text-muted-foreground hover:border-primary/40 hover:text-primary kiosk-shadow'
+                }`}
+              >
+                {isRecording && (
+                  <span className="absolute inset-0 rounded-2xl border-2 border-red-500/40 animate-ping" />
+                )}
+                {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+              </motion.button>
+            )}
             {heygenActive && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, MapPin, Armchair, CalendarDays, Navigation, CheckCircle2, Sparkles, Coffee, Wifi, Car, Calendar, Video, VideoOff, Timer, Send } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Armchair, CalendarDays, Navigation, CheckCircle2, Sparkles, Coffee, Wifi, Car, Calendar, Video, VideoOff, Timer, Send, Mic, MicOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import AudioBars from './AudioBars';
 import { Person, fetchUserChatResponse } from '@/lib/kioskData';
 import { heygenReady, startSession, closeSession, sendTextToAvatar, isSessionActive } from '@/lib/heygenService';
+import { startListening, stopListening, isListening as isVoiceListening } from '@/lib/voiceService';
+import { useChromaKey } from '@/hooks/useChromaKey';
 
 interface ResultViewProps {
   person: Person;
@@ -23,7 +25,11 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
   const [heygenLoading, setHeygenLoading] = useState(false);
   const [timerText, setTimerText] = useState('');
   const [questionInput, setQuestionInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [partialTranscript, setPartialTranscript] = useState('');
+  const accumulatedRef = useRef('');
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useChromaKey(videoRef, heygenActive);
   const msgsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +45,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
 
   useEffect(() => {
     return () => {
+      if (isVoiceListening()) stopListening();
       if (isSessionActive()) closeSession();
     };
   }, []);
@@ -89,11 +96,46 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
   }, [heygenActive]);
 
   const handleStopConversation = useCallback(async () => {
+    if (isVoiceListening()) {
+      stopListening();
+      setIsRecording(false);
+      setPartialTranscript('');
+    }
     await closeSession();
     setHeygenActive(false);
     setTimerText('');
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
+
+  const handleToggleMic = useCallback(() => {
+    if (isRecording) {
+      stopListening();
+      setIsRecording(false);
+      const finalText = (accumulatedRef.current + ' ' + partialTranscript).trim();
+      setPartialTranscript('');
+      accumulatedRef.current = '';
+      if (finalText) {
+        askQuestion(finalText);
+      }
+    } else {
+      accumulatedRef.current = '';
+      setPartialTranscript('');
+      startListening({
+        onPartial: (text) => setPartialTranscript(text),
+        onCommitted: (text) => {
+          accumulatedRef.current = (accumulatedRef.current + ' ' + text).trim();
+          setPartialTranscript('');
+        },
+        onError: (err) => {
+          console.warn('Voice error:', err);
+          setIsRecording(false);
+          setPartialTranscript('');
+          accumulatedRef.current = '';
+        },
+        onStateChange: (listening) => setIsRecording(listening),
+      });
+    }
+  }, [isRecording, person.nm, partialTranscript]);
 
   const checkedInTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -239,7 +281,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
         </div>
       </div>
 
-      {/* Right panel — Nadim Avatar + Chat (mirrors GenericSection) */}
+      {/* Right panel — Nadim Avatar + Chat */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Avatar area at top */}
         <div className="flex flex-col items-center px-6 pt-5 pb-3 flex-shrink-0 relative">
@@ -258,7 +300,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
               animation: 'glow-pulse 4s ease-in-out infinite',
             }} />
             <div className="relative z-10 w-[100px] h-[100px] rounded-full gradient-ring">
-              <div className="w-full h-full rounded-full overflow-hidden bg-card kiosk-shadow-lg relative">
+              <div className="w-full h-full rounded-full overflow-hidden bg-card kiosk-shadow-lg relative" style={{ background: '#0f1729' }}>
                 <img
                   src="/images/nadim-avatar.png"
                   alt="Nadim"
@@ -266,9 +308,13 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
                 />
                 <video
                   ref={videoRef}
-                  className={`absolute inset-0 w-full h-full object-cover object-[center_35%] ${heygenActive ? 'block' : 'hidden'}`}
+                  className="hidden"
                   autoPlay
                   playsInline
+                />
+                <canvas
+                  ref={canvasRef}
+                  className={`absolute inset-0 w-full h-full object-cover object-[center_35%] ${heygenActive ? 'block' : 'hidden'}`}
                 />
               </div>
             </div>
@@ -329,7 +375,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
           </div>
         </div>
 
-        {/* Chat messages (matches GenericSection style) */}
+        {/* Chat messages */}
         <div ref={msgsRef} className="flex-1 overflow-y-auto kiosk-scroll px-6 py-3 flex flex-col gap-3">
           <AnimatePresence>
             {messages.map((msg, i) => (
@@ -383,6 +429,16 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
 
         {/* Quick questions + Input bar */}
         <div className="px-6 pb-6 pt-3 border-t border-border/20 glass flex-shrink-0 flex flex-col gap-3">
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-4 py-2 rounded-xl bg-primary/5 border border-primary/15 text-[12px] text-foreground/70 italic flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+              {(accumulatedRef.current + (partialTranscript ? ' ' + partialTranscript : '')).trim() || 'Listening...'}
+            </motion.div>
+          )}
           <div className="flex gap-2 flex-wrap justify-center">
             {quickQuestions.map(q => {
               const Icon = q.icon;
@@ -407,8 +463,8 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
                 value={questionInput}
                 onChange={e => setQuestionInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendQuestion()}
-                placeholder="Ask Nadim anything..."
-                disabled={isTyping}
+                placeholder={isRecording ? 'Listening...' : 'Ask Nadim anything...'}
+                disabled={isTyping || isRecording}
                 className="w-full py-3.5 pl-5 pr-4 rounded-2xl border border-border/40 bg-card/60 text-foreground text-sm outline-none transition-all duration-300 focus:border-primary/30 placeholder:text-muted-foreground/40 kiosk-shadow disabled:opacity-50"
               />
             </div>
@@ -416,12 +472,32 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={handleSendQuestion}
-              disabled={isTyping || !questionInput.trim()}
+              disabled={isTyping || isRecording || !questionInput.trim()}
               className="h-[50px] px-6 rounded-2xl gradient-border text-primary-foreground font-semibold text-sm cursor-pointer transition-all duration-200 kiosk-shadow-glow flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send size={15} />
               Send
             </motion.button>
+            {heygenActive && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleMic}
+                disabled={isTyping}
+                className={`relative h-[50px] w-[50px] rounded-2xl font-semibold text-sm cursor-pointer transition-all duration-200 flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isRecording
+                    ? 'bg-red-500/15 border-2 border-red-500/50 text-red-500'
+                    : 'border border-border/40 bg-card text-muted-foreground hover:border-primary/40 hover:text-primary kiosk-shadow'
+                }`}
+              >
+                {isRecording && (
+                  <span className="absolute inset-0 rounded-2xl border-2 border-red-500/40 animate-ping" />
+                )}
+                {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+              </motion.button>
+            )}
           </div>
         </div>
       </div>
