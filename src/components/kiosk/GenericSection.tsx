@@ -35,9 +35,11 @@ const GenericSection = () => {
   const canvasRef = useChromaKey(videoRef, heygenActive);
 
   useEffect(() => {
-    if (msgsRef.current) {
-      msgsRef.current.scrollTo({ top: msgsRef.current.scrollHeight, behavior: 'smooth' });
-    }
+    requestAnimationFrame(() => {
+      if (msgsRef.current) {
+        msgsRef.current.scrollTo({ top: msgsRef.current.scrollHeight, behavior: 'smooth' });
+      }
+    });
   }, [messages]);
 
   useEffect(() => {
@@ -100,13 +102,13 @@ const GenericSection = () => {
 
   const handleToggleMic = useCallback(() => {
     if (isRecording) {
-      stopListening();
+      const finalText = stopListening();
       setIsRecording(false);
-      const finalText = (accumulatedRef.current + ' ' + partialTranscript).trim();
+      const combined = (finalText + ' ' + partialTranscript).trim();
       setPartialTranscript('');
       accumulatedRef.current = '';
-      if (finalText) {
-        send(finalText);
+      if (combined) {
+        send(combined);
       }
     } else {
       accumulatedRef.current = '';
@@ -114,7 +116,7 @@ const GenericSection = () => {
       startListening({
         onPartial: (text) => setPartialTranscript(text),
         onCommitted: (text) => {
-          accumulatedRef.current = (accumulatedRef.current + ' ' + text).trim();
+          accumulatedRef.current = text;
           setPartialTranscript('');
         },
         onError: (err) => {
@@ -256,8 +258,8 @@ const GenericSection = () => {
       </div>
 
       {/* Right panel — Chat */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div ref={msgsRef} className="flex-1 overflow-y-auto kiosk-scroll p-6 flex flex-col gap-3">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div ref={msgsRef} className="flex-1 min-h-0 overflow-y-auto kiosk-scroll p-6 flex flex-col gap-3">
           <AnimatePresence>
             {messages.map((msg, i) => (
               <motion.div
@@ -266,7 +268,7 @@ const GenericSection = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className={`
-                  max-w-[85%] text-sm leading-relaxed
+                  max-w-[85%] text-sm leading-relaxed flex-shrink-0 break-words
                   ${msg.isUser
                     ? 'self-end rounded-[20px_20px_6px_20px] px-5 py-3.5 border border-primary/15'
                     : 'self-start rounded-[20px_20px_20px_6px] card-fintech px-5 py-3.5 relative overflow-hidden'
@@ -309,7 +311,7 @@ const GenericSection = () => {
         </div>
 
         {/* Input bar */}
-        <div className="p-4 pb-10 border-t border-border/20 glass flex-shrink-0">
+        <div className="p-4 pb-5 border-t border-border/20 glass flex-shrink-0">
           {isRecording && (
             <motion.div
               initial={{ opacity: 0, y: 4 }}

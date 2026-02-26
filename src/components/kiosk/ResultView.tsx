@@ -51,9 +51,11 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
   }, []);
 
   useEffect(() => {
-    if (msgsRef.current) {
-      msgsRef.current.scrollTo({ top: msgsRef.current.scrollHeight, behavior: 'smooth' });
-    }
+    requestAnimationFrame(() => {
+      if (msgsRef.current) {
+        msgsRef.current.scrollTo({ top: msgsRef.current.scrollHeight, behavior: 'smooth' });
+      }
+    });
   }, [messages]);
 
   const askQuestion = async (q: string) => {
@@ -80,6 +82,9 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
   const handleStartConversation = useCallback(async () => {
     if (!heygenReady() || heygenActive) return;
     setHeygenLoading(true);
+    const h = new Date().getHours();
+    const greeting = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+    const personalWelcome = `Good ${greeting} ${person.f}! Welcome to FutureFin Expo 2026. I'm Nadim, your virtual assistant. Your hall is ${person.hl}, ${person.fl}. Feel free to ask me anything about the event, directions, or any help you need.`;
     try {
       await startSession(
         videoRef.current!,
@@ -87,6 +92,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
         () => { setHeygenActive(false); setTimerText(''); },
         (text) => setTimerText(text),
         () => handleStopConversation(),
+        personalWelcome,
       );
     } catch (e) {
       console.warn('HeyGen session failed:', e);
@@ -109,13 +115,13 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
 
   const handleToggleMic = useCallback(() => {
     if (isRecording) {
-      stopListening();
+      const finalText = stopListening();
       setIsRecording(false);
-      const finalText = (accumulatedRef.current + ' ' + partialTranscript).trim();
+      const combined = (finalText + ' ' + partialTranscript).trim();
       setPartialTranscript('');
       accumulatedRef.current = '';
-      if (finalText) {
-        askQuestion(finalText);
+      if (combined) {
+        askQuestion(combined);
       }
     } else {
       accumulatedRef.current = '';
@@ -123,7 +129,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
       startListening({
         onPartial: (text) => setPartialTranscript(text),
         onCommitted: (text) => {
-          accumulatedRef.current = (accumulatedRef.current + ' ' + text).trim();
+          accumulatedRef.current = text;
           setPartialTranscript('');
         },
         onError: (err) => {
@@ -168,45 +174,42 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
           background: 'radial-gradient(ellipse at center 30%, hsl(var(--primary) / 0.04), transparent 70%)',
         }} />
 
-        <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4 kiosk-scroll">
-          {/* Profile card */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="relative card-fintech overflow-hidden"
-          >
-            <div className="h-20 w-full" style={{
-              background: 'linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--secondary) / 0.08), hsl(var(--gold) / 0.06))',
-            }} />
-            <div className="flex items-start gap-4 p-5 -mt-10">
-              <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden border-[3px] border-card kiosk-shadow-lg">
-                  <img src={person.photo} alt={person.nm} className="w-full h-full object-cover" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0 pt-3">
-                <h3 className="text-lg font-extrabold tracking-tight leading-tight gradient-text">{person.nm}</h3>
-                <p className="text-xs text-muted-foreground/70 mt-0.5 font-medium font-mono-display">{person.dg}</p>
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border font-mono text-[10px] tracking-[1px] font-bold whitespace-nowrap"
-                    style={{
-                      background: 'hsl(var(--success) / 0.08)',
-                      borderColor: 'hsl(var(--success) / 0.2)',
-                      color: 'hsl(var(--success))',
-                    }}
-                  >
-                    <CheckCircle2 size={10} />
-                    CHECKED IN · {checkedInTime}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground/50 font-medium mt-2 leading-relaxed font-mono-display">
-                  ID: {person.id} · {person.dp} · Reports to: {person.rp}
-                </p>
+        {/* Pinned profile header */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative flex-shrink-0 px-6 pt-5 pb-4 border-b border-border/20 glass z-10"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border-[3px] border-primary/20 kiosk-shadow-lg">
+                <img src={person.photo} alt={person.nm} className="w-full h-full object-cover" />
               </div>
             </div>
-          </motion.div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-extrabold tracking-tight leading-tight gradient-text">{person.nm}</h3>
+              <p className="text-xs text-muted-foreground/70 mt-0.5 font-medium font-mono-display">{person.dg}</p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg border font-mono text-[10px] tracking-[1px] font-bold whitespace-nowrap"
+                  style={{
+                    background: 'hsl(var(--success) / 0.08)',
+                    borderColor: 'hsl(var(--success) / 0.2)',
+                    color: 'hsl(var(--success))',
+                  }}
+                >
+                  <CheckCircle2 size={10} />
+                  CHECKED IN · {checkedInTime}
+                </span>
+                <span className="text-[10px] text-muted-foreground/40 font-medium font-mono-display">
+                  ID: {person.id}
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
+        <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4 kiosk-scroll">
           {/* Info grid — 2x2 */}
           <div className="grid grid-cols-2 gap-3">
             {gridCards.map((card, i) => {
@@ -268,7 +271,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
         </div>
 
         {/* Back button pinned at bottom */}
-        <div className="p-4 border-t border-border/20 flex-shrink-0 glass flex items-center justify-center">
+        <div className="p-4 pb-12 border-t border-border/20 flex-shrink-0 glass flex items-center justify-center">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
@@ -282,7 +285,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
       </div>
 
       {/* Right panel — Nadim Avatar + Chat */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Avatar area at top */}
         <div className="flex flex-col items-center px-6 pt-5 pb-3 flex-shrink-0 relative">
           <div className="absolute inset-0 pointer-events-none" style={{
@@ -376,7 +379,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
         </div>
 
         {/* Chat messages */}
-        <div ref={msgsRef} className="flex-1 overflow-y-auto kiosk-scroll px-6 py-3 flex flex-col gap-3">
+        <div ref={msgsRef} className="flex-1 min-h-0 overflow-y-auto kiosk-scroll px-6 py-3 flex flex-col gap-3">
           <AnimatePresence>
             {messages.map((msg, i) => (
               <motion.div
@@ -385,7 +388,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className={`
-                  max-w-[85%] text-sm leading-relaxed
+                  max-w-[85%] text-sm leading-relaxed flex-shrink-0 break-words
                   ${msg.isUser
                     ? 'self-end rounded-[20px_20px_6px_20px] px-5 py-3.5 border border-primary/15'
                     : 'self-start rounded-[20px_20px_20px_6px] card-fintech px-5 py-3.5 relative overflow-hidden'

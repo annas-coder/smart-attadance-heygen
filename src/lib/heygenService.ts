@@ -56,6 +56,7 @@ export async function startSession(
   onDisconnect: () => void,
   onTimerUpdate: (text: string) => void,
   onTimerEnd: () => void,
+  customWelcome?: string,
 ): Promise<void> {
   if (!heygenReady() || state.active) return;
 
@@ -102,8 +103,8 @@ export async function startSession(
         state.active = true;
         videoEl.play().catch(() => {});
         onActive();
-        // Send welcome message
-        const welcomeMsg = "Good evening and welcome to FutureFin Expo 2026. I'm Nadim, your virtual assistant. I can help you with check-in, finding your way around the venue, session schedules, speaker information, dining options, and much more.";
+        const welcomeMsg = customWelcome
+          || "Good evening and welcome to FutureFin Expo 2026. I'm Nadim, your virtual assistant. I can help you with check-in, finding your way around the venue, session schedules, speaker information, dining options, and much more.";
         sendTextToAvatar(welcomeMsg, 'repeat');
       }
     }

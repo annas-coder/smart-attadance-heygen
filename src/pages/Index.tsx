@@ -61,7 +61,7 @@ const Index = () => {
         }} />
       </div>
 
-      <div className="relative z-[1] h-screen flex flex-col">
+      <div className="relative z-[1] flex-1 min-h-0 flex flex-col">
         <KioskHeader />
         <KioskTabs activeTab={activeTab} onTabChange={handleTabChange} />
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -95,7 +95,7 @@ const Index = () => {
         {/* Branding watermark */}
         <div className="fixed bottom-3 left-4 z-30 flex items-center gap-3 px-5 py-2.5 rounded-2xl glass-card kiosk-shadow">
           <img src="/images/tcit_logo.svg" alt="Technocit" className="h-[16px] w-auto opacity-60" />
-          <span className="text-muted-foreground/20 font-light text-xs">|</span>
+          <span className="text-muted-foreground/40 font-semibold text-[10px]">x</span>
           <img src="/images/nfs_logo.jpg" alt="NFS Technologies" className="h-[16px] w-auto rounded-sm opacity-60" />
         </div>
       </div>

@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
 
 const KioskHeader = () => {
   const [time, setTime] = useState('');
@@ -22,14 +20,6 @@ const KioskHeader = () => {
   return (
     <header className="flex items-center justify-between px-8 py-3.5 border-b border-border/30 glass-strong flex-shrink-0 relative z-10">
       <div className="flex items-center gap-4">
-        <motion.div
-          whileHover={{ scale: 1.08, rotate: 5 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-10 h-10 rounded-xl gradient-border flex items-center justify-center kiosk-shadow-glow cursor-pointer"
-          style={{ animation: 'float 4s ease-in-out infinite' }}
-        >
-          <Zap size={18} className="text-primary-foreground" />
-        </motion.div>
         <div className="flex flex-col">
           <span className="font-extrabold text-base tracking-tight leading-tight gradient-text">
             FutureFin Expo 2026
