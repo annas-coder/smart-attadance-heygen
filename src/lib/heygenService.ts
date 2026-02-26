@@ -3,7 +3,7 @@
 const HEYGEN_CONFIG = {
   serverUrl: 'https://api.heygen.com',
   apiKey: 'sk_V2_hgu_k1Qz2fiafEg_bbWqllRnvf2oNrFe53Itf0zXcdob2RjZ',
-  avatarName: 'Wayne_20240711',
+  avatarName: 'Graham_Black_Suit_public',
   voiceId: '',
 };
 
