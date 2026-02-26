@@ -421,11 +421,19 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
           </AnimatePresence>
           {isTyping && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="self-start rounded-2xl card-fintech px-6 py-3 max-w-[200px]"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="self-start rounded-[20px_20px_20px_6px] card-fintech px-5 py-4 flex items-center gap-2 relative overflow-hidden flex-shrink-0"
             >
-              <div className="h-2 rounded-full shimmer-bg" />
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[20px]" style={{
+                background: 'linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--secondary)))',
+              }} />
+              <div className="flex items-center gap-1.5 pl-1">
+                <span className="w-2 h-2 rounded-full bg-primary/60" style={{ animation: 'typing-bounce 1.4s ease-in-out infinite' }} />
+                <span className="w-2 h-2 rounded-full bg-primary/60" style={{ animation: 'typing-bounce 1.4s ease-in-out 0.2s infinite' }} />
+                <span className="w-2 h-2 rounded-full bg-primary/60" style={{ animation: 'typing-bounce 1.4s ease-in-out 0.4s infinite' }} />
+              </div>
+              <span className="text-[11px] text-muted-foreground/50 ml-1">Nadim is typing</span>
             </motion.div>
           )}
         </div>
