@@ -108,6 +108,45 @@ export const RESPONSES: Record<string, string> = {
   default: "I can help with schedules, halls, WiFi, parking, dining. What do you need?"
 };
 
+const GENERAL_CHAT_URL = 'https://technocit.app.n8n.cloud/webhook/suntory/general-chat';
+const USER_CHAT_URL = 'https://technocit.app.n8n.cloud/webhook/suntory/user-chat';
+
+export async function fetchGeneralChatResponse(message: string): Promise<string> {
+  const res = await fetch(GENERAL_CHAT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) {
+    throw new Error(`Chat API error: ${res.status}`);
+  }
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return typeof json === 'string' ? json : (json.output ?? json.message ?? json.response ?? json.text ?? text);
+  } catch {
+    return text;
+  }
+}
+
+export async function fetchUserChatResponse(message: string, user: string): Promise<string> {
+  const res = await fetch(USER_CHAT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, user }),
+  });
+  if (!res.ok) {
+    throw new Error(`User chat API error: ${res.status}`);
+  }
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return typeof json === 'string' ? json : (json.output ?? json.message ?? json.response ?? json.text ?? text);
+  } catch {
+    return text;
+  }
+}
+
 export function getResponse(query: string): string {
   const q = query.toLowerCase();
   if (q.match(/schedul|event|today/)) return RESPONSES.schedule;

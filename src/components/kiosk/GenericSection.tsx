@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, Video, VideoOff, Timer } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import AudioBars from './AudioBars';
-import { getResponse } from '@/lib/kioskData';
+import { fetchGeneralChatResponse } from '@/lib/kioskData';
 import { heygenReady, startSession, closeSession, sendTextToAvatar, isSessionActive } from '@/lib/heygenService';
 
 interface Message {
@@ -41,20 +42,23 @@ const GenericSection = () => {
     };
   }, []);
 
-  const send = (text?: string) => {
+  const send = async (text?: string) => {
     const q = (text || input).trim();
     if (!q) return;
     setInput('');
     setMessages(prev => [...prev, { text: q, isUser: true }]);
     setIsTyping(true);
-    setTimeout(() => {
-      const reply = getResponse(q);
+    try {
+      const reply = await fetchGeneralChatResponse(q);
       setMessages(prev => [...prev, { text: reply, isUser: false }]);
-      setIsTyping(false);
       if (isSessionActive()) {
         sendTextToAvatar(reply, 'repeat');
       }
-    }, 600 + Math.random() * 400);
+    } catch {
+      setMessages(prev => [...prev, { text: "I'm having trouble connecting right now. Please try again in a moment.", isUser: false }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleStartConversation = useCallback(async () => {
@@ -240,7 +244,13 @@ const GenericSection = () => {
                     </div>
                   </>
                 )}
-                <span className={msg.isUser ? 'text-foreground/90' : ''}>{msg.text}</span>
+                {msg.isUser ? (
+                  <span className="text-foreground/90">{msg.text}</span>
+                ) : (
+                  <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-foreground prose-p:text-foreground/85 prose-li:text-foreground/85 prose-strong:text-foreground prose-a:text-primary">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

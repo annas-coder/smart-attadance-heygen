@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Building2, MapPin, Armchair, CalendarDays, Navigation, CheckCircle2, Sparkles, Coffee, Wifi, Car, Calendar, Video, VideoOff, Timer } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Armchair, CalendarDays, Navigation, CheckCircle2, Sparkles, Coffee, Wifi, Car, Calendar, Video, VideoOff, Timer, Send } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import AudioBars from './AudioBars';
-import { Person, NADIM_AVATAR, getResponse } from '@/lib/kioskData';
+import { Person, NADIM_AVATAR, fetchUserChatResponse } from '@/lib/kioskData';
 import { heygenReady, startSession, closeSession, sendTextToAvatar, isSessionActive } from '@/lib/heygenService';
 
 interface ResultViewProps {
@@ -23,6 +24,7 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
     const h = new Date().getHours();
     const gr = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
     const text = `Welcome ${person.f}! Good ${gr}. Your hall is ${person.hl}, ${person.fl}. ${person.ms} Need anything? Just ask!`;
+    setFullReply(text);
     typeText(text);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [person]);
@@ -48,10 +50,30 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
     }, 14);
   };
 
-  const askQuestion = (q: string) => {
-    const reply = getResponse(q);
-    typeText(reply);
-    if (isSessionActive()) sendTextToAvatar(reply, 'repeat');
+  const [questionInput, setQuestionInput] = useState('');
+  const [fullReply, setFullReply] = useState('');
+
+  const askQuestion = async (q: string) => {
+    setIsSpeaking(true);
+    setSpeechText('');
+    setFullReply('');
+    try {
+      const reply = await fetchUserChatResponse(q, person.nm);
+      setFullReply(reply);
+      typeText(reply);
+      if (isSessionActive()) sendTextToAvatar(reply, 'repeat');
+    } catch {
+      const fallback = "I'm having trouble connecting right now. Please try again in a moment.";
+      setFullReply(fallback);
+      typeText(fallback);
+    }
+  };
+
+  const handleSendQuestion = () => {
+    const q = questionInput.trim();
+    if (!q) return;
+    setQuestionInput('');
+    askQuestion(q);
   };
 
   const handleStartConversation = useCallback(async () => {
@@ -196,12 +218,14 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
         )}
 
         {/* Speech bubble */}
-        <div className="bg-card border border-border/40 rounded-2xl rounded-bl-md p-4 w-full max-w-[300px] text-[13px] leading-[1.65] relative min-h-[50px] kiosk-shadow-md overflow-hidden">
+        <div className="bg-card border border-border/40 rounded-2xl rounded-bl-md p-4 w-full max-w-[300px] text-[13px] leading-[1.65] relative min-h-[50px] kiosk-shadow-md overflow-hidden overflow-y-auto max-h-[200px] kiosk-scroll">
           <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl gradient-border" />
           <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl" style={{
             background: 'linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--accent)))',
           }} />
-          <span className="text-foreground/85">{speechText}</span>
+          <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-foreground prose-p:text-foreground/85 prose-li:text-foreground/85 prose-strong:text-foreground prose-a:text-primary">
+            <ReactMarkdown>{speechText}</ReactMarkdown>
+          </div>
           {isSpeaking && (
             <span className="inline-block w-[2px] h-[14px] bg-primary ml-0.5 align-text-bottom rounded-full" style={{ animation: 'cursor-blink 0.7s infinite' }} />
           )}
@@ -214,14 +238,34 @@ const ResultView = ({ person, onBack }: ResultViewProps) => {
             return (
               <button
                 key={q.key}
-                onClick={() => askQuestion(q.key)}
-                className="py-1.5 px-3 rounded-xl border border-border/40 bg-card text-muted-foreground text-[11px] font-medium cursor-pointer transition-all duration-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5 kiosk-shadow flex items-center gap-1.5"
+                onClick={() => askQuestion(q.label)}
+                disabled={isSpeaking}
+                className="py-1.5 px-3 rounded-xl border border-border/40 bg-card text-muted-foreground text-[11px] font-medium cursor-pointer transition-all duration-200 hover:border-primary/30 hover:text-primary hover:bg-primary/5 kiosk-shadow flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Icon size={11} />
                 {q.label}
               </button>
             );
           })}
+        </div>
+
+        {/* Free-form question input */}
+        <div className="flex items-center gap-2 mt-3 w-full max-w-[300px]">
+          <input
+            value={questionInput}
+            onChange={e => setQuestionInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSendQuestion()}
+            placeholder="Ask a question..."
+            disabled={isSpeaking}
+            className="flex-1 py-2 px-3 rounded-xl border border-border/40 bg-card text-foreground text-[12px] outline-none transition-all duration-200 focus:border-primary/40 placeholder:text-muted-foreground/50 kiosk-shadow disabled:opacity-50"
+          />
+          <button
+            onClick={handleSendQuestion}
+            disabled={isSpeaking || !questionInput.trim()}
+            className="h-[36px] w-[36px] rounded-xl gradient-border text-primary-foreground flex items-center justify-center cursor-pointer transition-all duration-200 kiosk-shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send size={13} />
+          </button>
         </div>
       </div>
 
