@@ -60,7 +60,7 @@ async function youverseRequest<T>(
     );
   }
 
-  return text ? JSON.parse(text) : undefined;
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export async function processFace(imageBase64: string): Promise<FaceProcessResult> {
