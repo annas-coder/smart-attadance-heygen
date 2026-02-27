@@ -68,12 +68,27 @@ export function KioskMain() {
   const streamRef = useRef<MediaStream | null>(null);
   const heygenVideoRef = useRef<HTMLVideoElement>(null);
   const chromaCanvasRef = useChromaKey(heygenVideoRef, heygenActive);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const welcomeScrollRef = useRef<HTMLDivElement>(null);
 
   // Update clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Auto-scroll chat and welcome conversations to bottom on new messages
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [conversation, isSpeaking]);
+
+  useEffect(() => {
+    if (welcomeScrollRef.current) {
+      welcomeScrollRef.current.scrollTo({ top: welcomeScrollRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [welcomeConversation, isSpeaking]);
 
   // Auto-start camera when in face scanning mode
   useEffect(() => {
@@ -92,9 +107,12 @@ export function KioskMain() {
     const shouldConnect = (state === "chat" || state === "welcome") && heygenService.heygenReady() && heygenVideoRef.current;
 
     if (shouldConnect) {
-      const customWelcome = state === "welcome" && userData
-        ? `Welcome ${userData.fullName.split(" ")[0]}! I'm your AI assistant for FutureFin Expo 2026. Your check-in is complete and you're all set for today's sessions.`
-        : undefined;
+      const chatWelcome = "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
+      const welcomeGreeting = userData
+        ? `Hi ${userData.fullName.split(" ")[0]}! You're checked in. How can I help you?`
+        : chatWelcome;
+
+      const customWelcome = state === "welcome" ? welcomeGreeting : chatWelcome;
 
       heygenService.startSession(
         heygenVideoRef.current!,
@@ -114,36 +132,25 @@ export function KioskMain() {
     };
   }, [state]);
 
+  // Auto-start chat welcome message
+  useEffect(() => {
+    if (state === "chat" && conversation.length === 0) {
+      const greeting = "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
+      setConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
+    }
+  }, [state]);
+
   // Auto-start welcome conversation when user checks in
   useEffect(() => {
     if (state === "welcome" && userData && welcomeConversation.length === 0) {
-      const greeting = `Welcome ${userData.fullName.split(" ")[0]}! I'm your AI assistant for FutureFin Expo 2026. Your check-in is complete and you're all set for today's sessions.`;
-      setIsSpeaking(true);
+      const greeting = `Hi ${userData.fullName.split(" ")[0]}! You're checked in. How can I help you?`;
       setWelcomeConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
-      heygenService.sendTextToAvatar(greeting);
-
-      const fetchFollowUp = async () => {
-        try {
-          const followUp = await fetchUserChatResponse(
-            `I just checked in. My next session is "${userData.agenda?.currentSession?.title}" at ${userData.agenda?.currentSession?.location}. Give me a brief welcome and tell me about my next session.`,
-            userData.fullName,
-          );
-          setWelcomeConversation(prev => [...prev, { type: "assistant", text: followUp, timestamp: new Date() }]);
-          heygenService.sendTextToAvatar(followUp);
-        } catch {
-          const fallback = `Your next session "${userData.agenda?.currentSession?.title}" is happening now at ${userData.agenda?.currentSession?.location}. Would you like directions or have any questions?`;
-          setWelcomeConversation(prev => [...prev, { type: "assistant", text: fallback, timestamp: new Date() }]);
-          heygenService.sendTextToAvatar(fallback);
-        } finally {
-          setIsSpeaking(false);
-        }
-      };
-      fetchFollowUp();
     }
   }, [state, userData]);
 
   const sendGeneralMessage = useCallback(async (message: string) => {
     heygenService.interruptAvatar();
+    setIsSpeaking(false);
     setConversation(prev => [...prev, { type: "user", text: message, timestamp: new Date() }]);
     setIsSpeaking(true);
     try {
@@ -160,6 +167,7 @@ export function KioskMain() {
 
   const sendWelcomeMessage = useCallback(async (message: string) => {
     heygenService.interruptAvatar();
+    setIsSpeaking(false);
     setWelcomeConversation(prev => [...prev, { type: "user", text: message, timestamp: new Date() }]);
     setIsSpeaking(true);
     try {
@@ -402,7 +410,7 @@ export function KioskMain() {
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.1 }}
                   onClick={() => setState("face-scanning")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#22D3EE]/30 hover:border-[#22D3EE] rounded-[20px] p-6 transition-all hover:bg-white/10"
+                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#22D3EE]/30 hover:border-[#22D3EE] rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#22D3EE]/20 to-[#8B5CF6]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -418,7 +426,7 @@ export function KioskMain() {
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                   onClick={() => setState("manual-checkin")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#8B5CF6]/30 hover:border-[#8B5CF6] rounded-[20px] p-6 transition-all hover:bg-white/10"
+                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#8B5CF6]/30 hover:border-[#8B5CF6] rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#8B5CF6]/20 to-[#22D3EE]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -434,7 +442,7 @@ export function KioskMain() {
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
                   onClick={() => setState("chat")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-white/20 hover:border-white/40 rounded-[20px] p-6 transition-all hover:bg-white/10"
+                  className="group bg-white/5 backdrop-blur-xl border-2 border-white/20 hover:border-white/40 rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -608,30 +616,30 @@ export function KioskMain() {
             <div className="w-full h-full max-w-5xl grid grid-cols-2 gap-8 px-8">
               
               {/* LEFT: Avatar Display - Cinematic */}
-              <div className="flex flex-col items-center justify-center">
+              <div className="flex flex-col h-full py-4 overflow-hidden">
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.1, type: "spring" }}
-                  className="relative w-full"
+                  className="relative flex-1 min-h-0"
                 >
                   {/* Avatar Frame with Dynamic Border */}
                   <motion.div 
-                    className="relative w-full aspect-[3/4] rounded-[40px] overflow-hidden border-4"
+                    className="relative w-full h-full rounded-[32px] overflow-hidden border-2"
                     animate={{
                       borderColor: isSpeaking 
-                        ? ["rgba(34, 211, 238, 0.5)", "rgba(34, 211, 238, 1)", "rgba(34, 211, 238, 0.5)"]
+                        ? ["rgba(34, 211, 238, 0.3)", "rgba(34, 211, 238, 0.6)", "rgba(34, 211, 238, 0.3)"]
                         : isListening
-                        ? ["rgba(139, 92, 246, 0.5)", "rgba(139, 92, 246, 1)", "rgba(139, 92, 246, 0.5)"]
+                        ? ["rgba(139, 92, 246, 0.3)", "rgba(139, 92, 246, 0.6)", "rgba(139, 92, 246, 0.3)"]
                         : "rgba(255, 255, 255, 0.1)",
                       boxShadow: isSpeaking
-                        ? ["0 0 40px rgba(34, 211, 238, 0.3)", "0 0 80px rgba(34, 211, 238, 0.6)", "0 0 40px rgba(34, 211, 238, 0.3)"]
+                        ? ["0 0 15px rgba(34, 211, 238, 0.1)", "0 0 25px rgba(34, 211, 238, 0.2)", "0 0 15px rgba(34, 211, 238, 0.1)"]
                         : isListening
-                        ? ["0 0 40px rgba(139, 92, 246, 0.3)", "0 0 80px rgba(139, 92, 246, 0.6)", "0 0 40px rgba(139, 92, 246, 0.3)"]
-                        : "0 0 20px rgba(255, 255, 255, 0.1)"
+                        ? ["0 0 15px rgba(139, 92, 246, 0.1)", "0 0 25px rgba(139, 92, 246, 0.2)", "0 0 15px rgba(139, 92, 246, 0.1)"]
+                        : "0 0 10px rgba(255, 255, 255, 0.05)"
                     }}
                     transition={{
-                      duration: isSpeaking || isListening ? 1.5 : 0.3,
+                      duration: isSpeaking || isListening ? 2 : 0.3,
                       repeat: isSpeaking || isListening ? Infinity : 0,
                       ease: "easeInOut"
                     }}
@@ -683,50 +691,38 @@ export function KioskMain() {
                     </div>
                   </motion.div>
 
-                  {/* Sound Wave Visualization - Dynamic */}
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-end gap-2 h-12">
-                    {[...Array(9)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          height: isSpeaking 
-                            ? ["20%", "100%", "20%"]
-                            : isListening
-                            ? ["15%", "60%", "15%"]
-                            : ["20%", "40%", "20%"],
-                          backgroundColor: isSpeaking
-                            ? ["#22D3EE", "#8B5CF6", "#22D3EE"]
-                            : isListening
-                            ? ["#8B5CF6", "#22D3EE", "#8B5CF6"]
-                            : ["#22D3EE", "#22D3EE", "#22D3EE"]
-                        }}
-                        transition={{
-                          duration: isSpeaking ? 0.6 : isListening ? 0.8 : 2,
-                          repeat: Infinity,
-                          delay: i * 0.1,
-                          ease: "easeInOut"
-                        }}
-                        className="w-2 rounded-full"
-                        style={{
-                          filter: `drop-shadow(0 0 ${isSpeaking ? 8 : isListening ? 6 : 4}px currentColor)`
-                        }}
-                      />
-                    ))}
-                  </div>
                 </motion.div>
 
-                {/* Avatar Name & Status */}
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-center mt-12"
-                >
-                  <h2 className="text-2xl font-black bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent mb-1">
-                    AI Assistant
-                  </h2>
-                  <p className="text-white/50 text-sm font-medium">Your Event Companion</p>
-                </motion.div>
+                {/* Sound Wave Visualization */}
+                <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0">
+                  {[...Array(9)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        height: isSpeaking 
+                          ? [4, 20, 4]
+                          : isListening
+                          ? [3, 12, 3]
+                          : [4, 8, 4],
+                        backgroundColor: isSpeaking
+                          ? ["#22D3EE", "#8B5CF6", "#22D3EE"]
+                          : isListening
+                          ? ["#8B5CF6", "#22D3EE", "#8B5CF6"]
+                          : ["#22D3EE", "#22D3EE", "#22D3EE"]
+                      }}
+                      transition={{
+                        duration: isSpeaking ? 0.6 : isListening ? 0.8 : 2,
+                        repeat: Infinity,
+                        delay: i * 0.1,
+                        ease: "easeInOut"
+                      }}
+                      className="w-1.5 rounded-full"
+                      style={{
+                        filter: `drop-shadow(0 0 ${isSpeaking ? 8 : isListening ? 6 : 4}px currentColor)`
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* RIGHT: Conversation & Controls */}
@@ -737,7 +733,7 @@ export function KioskMain() {
                   initial={{ x: 20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="flex-1 min-h-0 mb-6 rounded-[32px] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-xl p-6 overflow-hidden flex flex-col relative z-0"
+                  className="flex-1 min-h-0 mb-4 rounded-[32px] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-xl p-6 overflow-hidden flex flex-col relative z-0"
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
@@ -751,7 +747,7 @@ export function KioskMain() {
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                  <div ref={chatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {conversation.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center py-8">
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#22D3EE]/20 to-[#8B5CF6]/20 flex items-center justify-center mb-4">
@@ -846,6 +842,8 @@ export function KioskMain() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
+                      heygenService.interruptAvatar();
+                      setIsSpeaking(false);
                       if (isListening) {
                         const finalText = voiceService.stopListening();
                         setIsListening(false);
@@ -910,22 +908,21 @@ export function KioskMain() {
             <div className="w-full h-full max-w-5xl grid grid-cols-2 gap-8 px-8">
               
               {/* LEFT: Avatar Display - Cinematic */}
-              <div className="flex flex-col items-center justify-center">
+              <div className="flex flex-col h-full py-4 overflow-hidden">
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.1, type: "spring" }}
-                  className="relative w-full"
+                  className="relative flex-1 min-h-0"
                 >
                   {/* Avatar Frame with Success Glow */}
                   <motion.div 
-                    className="relative w-full aspect-[3/4] rounded-[40px] overflow-hidden border-4"
+                    className="relative w-full h-full rounded-[32px] overflow-hidden border-2 border-[#34D399]/40"
                     animate={{
-                      borderColor: ["rgba(52, 211, 153, 0.5)", "rgba(52, 211, 153, 1)", "rgba(52, 211, 153, 0.5)"],
-                      boxShadow: ["0 0 40px rgba(52, 211, 153, 0.3)", "0 0 80px rgba(52, 211, 153, 0.6)", "0 0 40px rgba(52, 211, 153, 0.3)"]
+                      boxShadow: ["0 0 20px rgba(52, 211, 153, 0.1)", "0 0 30px rgba(52, 211, 153, 0.2)", "0 0 20px rgba(52, 211, 153, 0.1)"]
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut"
                     }}
@@ -961,44 +958,30 @@ export function KioskMain() {
                     </div>
                   </motion.div>
 
-                  {/* Sound Wave Visualization - Success Theme */}
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-end gap-2 h-12">
-                    {[...Array(9)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          height: ["20%", "70%", "20%"],
-                          backgroundColor: ["#34D399", "#22D3EE", "#34D399"]
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: i * 0.1,
-                          ease: "easeInOut"
-                        }}
-                        className="w-2 rounded-full"
-                        style={{
-                          filter: "drop-shadow(0 0 6px currentColor)"
-                        }}
-                      />
-                    ))}
-                  </div>
                 </motion.div>
 
-                {/* User Info */}
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-center mt-12"
-                >
-                  <h2 className="text-2xl font-black bg-gradient-to-r from-[#34D399] to-[#22D3EE] bg-clip-text text-transparent mb-1">
-                    Your AI Assistant
-                  </h2>
-                  <p className="text-white/60 text-sm font-medium">
-                    Here to guide your event experience
-                  </p>
-                </motion.div>
+                {/* Sound Wave Visualization - Success Theme */}
+                <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0">
+                  {[...Array(9)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        height: [4, 16, 4],
+                        backgroundColor: ["#34D399", "#22D3EE", "#34D399"]
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        delay: i * 0.1,
+                        ease: "easeInOut"
+                      }}
+                      className="w-1.5 rounded-full"
+                      style={{
+                        filter: "drop-shadow(0 0 6px currentColor)"
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* RIGHT: Conversation & Controls */}
@@ -1041,7 +1024,7 @@ export function KioskMain() {
                   </div>
 
                   {/* Messages Area */}
-                  <div className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
+                  <div ref={welcomeScrollRef} className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
                     {welcomeConversation.map((msg, idx) => (
                       <motion.div
                         key={idx}
@@ -1138,7 +1121,8 @@ export function KioskMain() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      if (isSpeaking) return;
+                      heygenService.interruptAvatar();
+                      setIsSpeaking(false);
                       if (isListening) {
                         const finalText = voiceService.stopListening();
                         setIsListening(false);
@@ -1164,8 +1148,7 @@ export function KioskMain() {
                         });
                       }
                     }}
-                    disabled={isSpeaking}
-                    className="flex-1 h-16 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden disabled:opacity-70"
+                    className="flex-1 h-16 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
                   >
                     {isListening && (
                       <motion.div
@@ -1195,12 +1178,21 @@ export function KioskMain() {
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      <div className="absolute bottom-1 left-0 right-0 text-center z-10 pointer-events-none">
-        <p className="text-[10px] text-white/30 font-medium">
-          Powered by <span className="text-[#22D3EE]">TechnoCIT</span> & <span className="text-[#8B5CF6]">NFS Technologies</span>
-        </p>
-      </div>
+      {/* Footer - hidden during chat/welcome to avoid overlapping controls */}
+      {state !== "chat" && state !== "welcome" && (
+        <div className="absolute bottom-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-sm py-2.5">
+          <div className="flex items-center justify-center gap-2.5">
+            <span className="text-[9px] text-gray-400 font-medium tracking-wider uppercase">Powered by</span>
+            <a href="https://technocit.com/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity">
+              <img src="/images/tcit_logo.svg" alt="TechnoCIT" className="h-5 object-contain" />
+            </a>
+            <span className="text-[9px] text-gray-300">&</span>
+            <a href="https://www.nfs.ae/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity">
+              <img src="/images/nfs_logo.png" alt="NFS Technologies" className="h-5 object-contain" />
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

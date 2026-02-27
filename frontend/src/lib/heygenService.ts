@@ -101,7 +101,7 @@ export async function startSession(
         videoEl.play().catch(() => {});
         onActive();
         const welcomeMsg = customWelcome
-          || "Good evening and welcome to FutureFin Expo 2026. I'm Nadim, your virtual assistant. I can help you with check-in, finding your way around the venue, session schedules, speaker information, dining options, and much more.";
+          || "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
         sendTextToAvatar(welcomeMsg, 'repeat');
       }
     }
