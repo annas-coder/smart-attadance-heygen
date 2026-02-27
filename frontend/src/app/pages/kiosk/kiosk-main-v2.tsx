@@ -10,6 +10,337 @@ import { fetchGeneralChatResponse, fetchUserChatResponse, type UserProfile } fro
 import { useChromaKey } from "../../hooks/useChromaKey";
 const aiAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2322D3EE'/%3E%3Cstop offset='100%25' stop-color='%238B5CF6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g)'/%3E%3Ctext x='100' y='115' text-anchor='middle' font-size='64' fill='white' font-family='sans-serif'%3EAI%3C/text%3E%3C/svg%3E";
 
+function SmileyLoader() {
+  const PARTICLES = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * Math.PI * 2;
+    const radius = 130;
+    return { x: 150 + Math.cos(angle) * radius, y: 150 + Math.sin(angle) * radius, delay: i * 0.25 };
+  });
+
+  const SPARKLES = [
+    { x: 60, y: 40, size: 3, delay: 0 },
+    { x: 240, y: 60, size: 2.5, delay: 0.8 },
+    { x: 40, y: 200, size: 2, delay: 1.6 },
+    { x: 250, y: 220, size: 3.5, delay: 0.4 },
+    { x: 150, y: 20, size: 2, delay: 1.2 },
+    { x: 270, y: 140, size: 2.5, delay: 2.0 },
+    { x: 30, y: 120, size: 2, delay: 1.4 },
+    { x: 180, y: 270, size: 3, delay: 0.6 },
+  ];
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0d0d1a] via-[#111128] to-[#0a0a1e] relative overflow-hidden">
+      {/* Ambient glow blobs */}
+      <motion.div
+        className="absolute w-72 h-72 rounded-full blur-[120px]"
+        style={{ background: "radial-gradient(circle, rgba(34,211,238,0.15), transparent 70%)" }}
+        animate={{ x: [-30, 30, -30], y: [-20, 20, -20] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute w-72 h-72 rounded-full blur-[120px]"
+        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12), transparent 70%)" }}
+        animate={{ x: [30, -30, 30], y: [20, -20, 20] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      {/* Main content */}
+      <motion.div
+        className="relative z-10 flex flex-col items-center"
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+      >
+        {/* Outer spinning ring */}
+        <div className="relative w-56 h-56 md:w-64 md:h-64">
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "conic-gradient(from 0deg, transparent, #22D3EE, transparent, #8B5CF6, transparent)",
+              padding: "2px",
+              mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              maskComposite: "exclude",
+              WebkitMaskComposite: "xor",
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+          />
+
+          {/* Inner glow ring */}
+          <motion.div
+            className="absolute inset-3 rounded-full"
+            style={{
+              background: "conic-gradient(from 180deg, transparent, rgba(139,92,246,0.3), transparent, rgba(34,211,238,0.3), transparent)",
+              padding: "1.5px",
+              mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              maskComposite: "exclude",
+              WebkitMaskComposite: "xor",
+            }}
+            animate={{ rotate: -360 }}
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          />
+
+          {/* SVG face inside */}
+          <div className="absolute inset-6 flex items-center justify-center">
+            <motion.svg
+              viewBox="0 0 300 300"
+              className="w-full h-full drop-shadow-[0_0_40px_rgba(34,211,238,0.2)]"
+            >
+              <defs>
+                <radialGradient id="faceGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(34,211,238,0.08)" />
+                  <stop offset="100%" stopColor="transparent" />
+                </radialGradient>
+                <linearGradient id="eyeGradL" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#22D3EE" />
+                  <stop offset="100%" stopColor="#67E8F9" />
+                </linearGradient>
+                <linearGradient id="eyeGradR" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#8B5CF6" />
+                  <stop offset="100%" stopColor="#A78BFA" />
+                </linearGradient>
+                <linearGradient id="smileGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#22D3EE" />
+                  <stop offset="50%" stopColor="#ffffff" />
+                  <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <filter id="softGlow">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+
+              {/* Face background glow */}
+              <circle cx="150" cy="150" r="120" fill="url(#faceGlow)" />
+
+              {/* Face outline - double ring */}
+              <motion.circle
+                cx="150" cy="150" r="110"
+                fill="none"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+                animate={{ r: [110, 112, 110] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              />
+
+              {/* Left eye - with glow and pupil */}
+              <motion.ellipse
+                cx="112" cy="125"
+                fill="url(#eyeGradL)"
+                filter="url(#glow)"
+                animate={{
+                  ry: [16, 2, 2, 16, 16, 16],
+                  rx: [13, 13, 13, 13, 13, 13],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  times: [0, 0.06, 0.1, 0.16, 0.5, 1],
+                  ease: "easeInOut",
+                }}
+              />
+              {/* Left eye highlight */}
+              <motion.circle
+                cx="117" cy="120" r="4"
+                fill="white"
+                opacity="0.9"
+                animate={{
+                  opacity: [0.9, 0, 0, 0.9, 0.9, 0.9],
+                  r: [4, 0, 0, 4, 4, 4],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  times: [0, 0.06, 0.1, 0.16, 0.5, 1],
+                }}
+              />
+
+              {/* Right eye - with glow and pupil */}
+              <motion.ellipse
+                cx="188" cy="125"
+                fill="url(#eyeGradR)"
+                filter="url(#glow)"
+                animate={{
+                  ry: [16, 2, 2, 16, 16, 16],
+                  rx: [13, 13, 13, 13, 13, 13],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  times: [0, 0.06, 0.1, 0.16, 0.5, 1],
+                  ease: "easeInOut",
+                }}
+              />
+              {/* Right eye highlight */}
+              <motion.circle
+                cx="193" cy="120" r="4"
+                fill="white"
+                opacity="0.9"
+                animate={{
+                  opacity: [0.9, 0, 0, 0.9, 0.9, 0.9],
+                  r: [4, 0, 0, 4, 4, 4],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  times: [0, 0.06, 0.1, 0.16, 0.5, 1],
+                }}
+              />
+
+              {/* Smile - thick, glowing, gradient */}
+              <motion.path
+                fill="none"
+                stroke="url(#smileGrad)"
+                strokeWidth="5"
+                strokeLinecap="round"
+                filter="url(#softGlow)"
+                animate={{
+                  d: [
+                    "M 95 175 Q 150 220 205 175",
+                    "M 90 178 Q 150 235 210 178",
+                    "M 95 175 Q 150 220 205 175",
+                  ],
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              />
+
+              {/* Rosy cheeks */}
+              <motion.circle
+                cx="78" cy="165" r="16"
+                fill="#22D3EE"
+                animate={{ opacity: [0.04, 0.12, 0.04] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+              <motion.circle
+                cx="222" cy="165" r="16"
+                fill="#8B5CF6"
+                animate={{ opacity: [0.04, 0.12, 0.04] }}
+                transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
+              />
+
+              {/* Sparkle stars around face */}
+              {SPARKLES.map((s, i) => (
+                <motion.g key={i} transform={`translate(${s.x}, ${s.y})`}>
+                  <motion.path
+                    d={`M 0 ${-s.size} L ${s.size * 0.3} ${-s.size * 0.3} L ${s.size} 0 L ${s.size * 0.3} ${s.size * 0.3} L 0 ${s.size} L ${-s.size * 0.3} ${s.size * 0.3} L ${-s.size} 0 L ${-s.size * 0.3} ${-s.size * 0.3} Z`}
+                    fill="white"
+                    animate={{
+                      opacity: [0, 1, 0],
+                      scale: [0.5, 1.2, 0.5],
+                      rotate: [0, 90, 180],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      delay: s.delay,
+                      ease: "easeInOut",
+                    }}
+                  />
+                </motion.g>
+              ))}
+            </motion.svg>
+          </div>
+
+          {/* Orbiting particles */}
+          {PARTICLES.map((p, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1.5 h-1.5 rounded-full"
+              style={{
+                background: i % 2 === 0 ? "#22D3EE" : "#8B5CF6",
+                boxShadow: `0 0 8px ${i % 2 === 0 ? "#22D3EE" : "#8B5CF6"}`,
+                left: "50%",
+                top: "50%",
+              }}
+              animate={{
+                x: [
+                  Math.cos((i / 12) * Math.PI * 2) * 115,
+                  Math.cos(((i + 4) / 12) * Math.PI * 2) * 115,
+                  Math.cos(((i + 8) / 12) * Math.PI * 2) * 115,
+                  Math.cos((i / 12) * Math.PI * 2) * 115,
+                ],
+                y: [
+                  Math.sin((i / 12) * Math.PI * 2) * 115,
+                  Math.sin(((i + 4) / 12) * Math.PI * 2) * 115,
+                  Math.sin(((i + 8) / 12) * Math.PI * 2) * 115,
+                  Math.sin((i / 12) * Math.PI * 2) * 115,
+                ],
+                opacity: [0.3, 0.8, 0.3],
+                scale: [0.8, 1.3, 0.8],
+              }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                delay: p.delay,
+                ease: "linear",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Loading section */}
+        <motion.div
+          className="mt-8 flex flex-col items-center gap-4"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+        >
+          {/* Glowing progress bar */}
+          <div className="w-44 h-1 rounded-full bg-white/5 overflow-hidden relative">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{
+                background: "linear-gradient(90deg, #22D3EE, #8B5CF6, #22D3EE)",
+                backgroundSize: "200% 100%",
+              }}
+              animate={{
+                width: ["0%", "100%", "0%"],
+                backgroundPosition: ["0% 0%", "100% 0%", "0% 0%"],
+              }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full blur-sm"
+              style={{ background: "linear-gradient(90deg, #22D3EE, #8B5CF6)" }}
+              animate={{ width: ["0%", "100%", "0%"] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </div>
+
+          {/* Text */}
+          <div className="flex items-center gap-1">
+            <motion.span
+              className="text-xs font-semibold tracking-[0.2em] uppercase"
+              style={{ background: "linear-gradient(90deg, #22D3EE, #8B5CF6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+              animate={{ opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              Assistant is loading
+            </motion.span>
+            <span className="flex gap-[2px]">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="text-xs font-semibold"
+                  style={{ background: "linear-gradient(90deg, #22D3EE, #8B5CF6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }}
+                >
+                  .
+                </motion.span>
+              ))}
+            </span>
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
 const DEMO_PEOPLE = [
   { id: "EMP001", nm: "Arun Krishnan", dg: "Sr. Software Engineer", dp: "Engineering", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face", ev: "Tech Summit 2026", et: "10 AM–4 PM", hl: "Hall A — Auditorium", fl: "Ground Floor", st: "A-142" },
   { id: "EMP024", nm: "Sarah Mitchell", dg: "Product Manager", dp: "Product", photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face", ev: "Q1 Strategy Review", et: "9:30 AM–12 PM", hl: "Hall C — Board Room", fl: "3rd Floor", st: "C-08" },
@@ -485,7 +816,7 @@ export function KioskMain() {
                 className="text-center mb-8"
               >
                 <h1 className="text-5xl font-black mb-3 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent">
-                  Welcome!
+                  Welcome to FutureFin Summit 2026!
                 </h1>
                 <p className="text-xl text-white/80 font-medium">
                   How would you like to proceed?
@@ -756,18 +1087,14 @@ export function KioskMain() {
                     {heygenActive ? (
                       <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
                     ) : (
-                      <img
-                        src={aiAvatar}
-                        alt="AI Assistant"
-                        className="w-full h-full object-cover object-top"
-                      />
+                      <SmileyLoader />
                     )}
                     
                     {/* Dynamic Gradient Overlay */}
                     <motion.div 
-                      className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50"
+                      className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none"
                       animate={{
-                        opacity: isSpeaking ? [0.8, 1, 0.8] : 1
+                        opacity: isSpeaking ? [0.8, 1, 0.8] : heygenActive ? 1 : 0
                       }}
                       transition={{
                         duration: 2,
@@ -1039,15 +1366,11 @@ export function KioskMain() {
                     {heygenActive ? (
                       <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
                     ) : (
-                      <img
-                        src={aiAvatar}
-                        alt="AI Assistant"
-                        className="w-full h-full object-cover object-top"
-                      />
+                      <SmileyLoader />
                     )}
                     
                     {/* Dynamic Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50" />
+                    <div className={`absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none ${heygenActive ? '' : 'opacity-0'}`} />
                     
                     {/* Success Badge */}
                     <div className="absolute top-6 right-6">
