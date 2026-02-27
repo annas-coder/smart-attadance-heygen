@@ -395,6 +395,7 @@ export function KioskMain() {
   const [heygenActive, setHeygenActive] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [manualError, setManualError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const scanCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -721,32 +722,9 @@ export function KioskMain() {
       setUserData(user);
       setState("welcome");
       setManualInput("");
+      setManualError(null);
     } catch {
-      const input = manualInput.trim().toLowerCase();
-      const person = DEMO_PEOPLE.find(p =>
-        p.id.toLowerCase() === input ||
-        `${p.nm.toLowerCase().replace(/\s+/g, ".")}@demo.com` === input
-      ) || DEMO_PEOPLE[Math.floor(Math.random() * DEMO_PEOPLE.length)];
-
-      const user: UserData = {
-        fullName: person.nm,
-        designation: person.dg,
-        company: person.dp,
-        email: `${person.nm.toLowerCase().replace(/\s+/g, ".")}@demo.com`,
-        faceImage: undefined,
-        registrationId: person.id,
-        agenda: {
-          currentSession: {
-            title: person.ev,
-            location: `${person.hl}, ${person.fl}`,
-            time: person.et,
-          },
-        },
-      };
-
-      setUserData(user);
-      setState("welcome");
-      setManualInput("");
+      setManualError("No registration found. Please check your details or visit the Registration Desk.");
     }
   };
 
@@ -762,6 +740,7 @@ export function KioskMain() {
     setWelcomeConversation([]);
     setUserData(null);
     setManualInput("");
+    setManualError(null);
     setScanMessage(null);
     setScanProgress(0);
     setIsScanning(false);
@@ -1018,11 +997,17 @@ export function KioskMain() {
                 <input
                   type="text"
                   value={manualInput}
-                  onChange={(e) => setManualInput(e.target.value)}
+                  onChange={(e) => { setManualInput(e.target.value); setManualError(null); }}
                   onKeyPress={(e) => e.key === "Enter" && processManualCheckIn()}
                   placeholder={manualMethod === "email" ? "Enter your email" : "Enter ID (FF2026-XXXXX)"}
                   className="w-full px-4 py-3 rounded-[12px] bg-white/5 border-2 border-white/10 focus:border-[#22D3EE] focus:outline-none text-white placeholder-white/40 mb-4"
                 />
+
+                {manualError && (
+                  <p className="text-sm text-[#FB7185] text-center font-medium mb-4">
+                    {manualError}
+                  </p>
+                )}
 
                 <button
                   onClick={processManualCheckIn}
