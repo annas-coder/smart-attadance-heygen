@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createHashRouter } from "react-router";
 import { DashboardSimple } from "./pages/admin/dashboard-simple";
 import { Events } from "./pages/admin/events";
 import { GuestsSimple } from "./pages/admin/guests-simple";
@@ -12,7 +12,7 @@ import { ViewTicket } from "./pages/registration/view-ticket";
 import { KioskApp } from "./pages/kiosk/kiosk-app";
 import { KioskMain } from "./pages/kiosk/kiosk-main-v2";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     Component: RegistrationLanding,

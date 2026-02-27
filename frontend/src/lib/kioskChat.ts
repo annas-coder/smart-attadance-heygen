@@ -1,6 +1,6 @@
 const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api/kiosk`;
 
-const sessionId = crypto.randomUUID();
+const sessionId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export async function fetchGeneralChatResponse(message: string): Promise<string> {
   const res = await fetch(`${API_BASE}/chat`, {
