@@ -174,7 +174,15 @@ export const registration = {
   uploadFace(guestId: string, file: Blob) {
     const formData = new FormData();
     formData.append("face", file, "face.jpg");
-    return requestFile<{ guestId: string; faceImagePath: string; status: string }>(`/register/face/${guestId}`, formData);
+    return requestFile<{
+      guestId: string;
+      faceImagePath: string;
+      status: string;
+      qualityChecks?: Record<string, boolean>;
+      enrolled?: boolean;
+      retakeRequired?: boolean;
+      reason?: string;
+    }>(`/register/face/${guestId}`, formData);
   },
   confirm(guestId: string) {
     return request<{ guest: any; event: any }>(`/register/confirm/${guestId}`, {
@@ -198,6 +206,12 @@ export const kiosk = {
   checkin(guestId: string) {
     return request<{ guest: any; event: any }>(`/kiosk/checkin/${guestId}`, {
       method: "POST",
+    });
+  },
+  faceIdentify(image: string, eventId: string) {
+    return request<{ matched: boolean; score?: number; reason?: string; guest?: any; event?: any }>("/kiosk/face-identify", {
+      method: "POST",
+      body: JSON.stringify({ image, eventId }),
     });
   },
 };

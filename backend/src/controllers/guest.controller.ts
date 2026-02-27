@@ -5,6 +5,7 @@ import { Guest } from "../models/Guest.js";
 import { Event } from "../models/Event.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { sendSuccess, sendError } from "../utils/apiResponse.js";
+import * as youverse from "../services/youverseService.js";
 
 const addGuestSchema = z.object({
   fullName: z.string().min(1),
@@ -248,5 +249,15 @@ export async function deleteGuest(req: Request, res: Response) {
   if (!guest) {
     return sendError(res, "Guest not found", 404);
   }
+
+  if (guest.faceTemplateId) {
+    youverse.removeFromGallery(
+      guest.eventId.toString(),
+      guest._id.toString()
+    ).catch((err) => {
+      console.error("Failed to remove guest from Youverse gallery:", err.message);
+    });
+  }
+
   return sendSuccess(res, { message: "Guest deleted" });
 }

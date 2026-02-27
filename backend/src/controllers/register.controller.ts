@@ -1,11 +1,18 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Guest } from "../models/Guest.js";
 import { Event } from "../models/Event.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { generateRegistrationId } from "../utils/generateId.js";
 import { sendSuccess, sendError } from "../utils/apiResponse.js";
+import * as youverse from "../services/youverseService.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const registerSchema = z.object({
   eventId: z.string(),
@@ -71,6 +78,32 @@ export async function submitRegistration(req: Request, res: Response) {
   }
 }
 
+function mapQualityMetrics(metrics: { name: string; test: boolean }[]) {
+  const checks: Record<string, boolean> = {
+    faceDetected: true,
+    faceCentered: true,
+    goodLighting: true,
+    noObstructions: true,
+    imageSharp: true,
+    singleFace: true,
+  };
+
+  for (const m of metrics) {
+    const name = m.name.toLowerCase();
+    if (name.includes("center") || name.includes("pose")) {
+      checks.faceCentered = checks.faceCentered && m.test;
+    } else if (name.includes("light") || name.includes("exposure") || name.includes("brightness")) {
+      checks.goodLighting = checks.goodLighting && m.test;
+    } else if (name.includes("occlu") || name.includes("mask") || name.includes("glasses")) {
+      checks.noObstructions = checks.noObstructions && m.test;
+    } else if (name.includes("sharp") || name.includes("blur") || name.includes("focus")) {
+      checks.imageSharp = checks.imageSharp && m.test;
+    }
+  }
+
+  return checks;
+}
+
 export async function uploadFaceImage(req: Request, res: Response) {
   const { guestId } = req.params;
 
@@ -84,21 +117,107 @@ export async function uploadFaceImage(req: Request, res: Response) {
   }
 
   guest.faceImagePath = `/uploads/faces/${req.file.filename}`;
-  guest.status = "FaceCaptured";
-  await guest.save();
 
-  await ActivityLog.create({
-    eventId: guest.eventId,
-    guestId: guest._id,
-    action: "face_captured",
-    details: `${guest.fullName} uploaded face image`,
-  });
+  const filePath = path.join(__dirname, "..", "..", "uploads", "faces", req.file.filename);
+  const imageBuffer = fs.readFileSync(filePath);
+  const imageBase64 = imageBuffer.toString("base64");
 
-  return sendSuccess(res, {
-    guestId: guest._id,
-    faceImagePath: guest.faceImagePath,
-    status: guest.status,
-  });
+  try {
+    const result = await youverse.processFace(imageBase64);
+
+    const qualityChecks = result.detected
+      ? mapQualityMetrics(result.qualityMetrics)
+      : {
+          faceDetected: false,
+          faceCentered: false,
+          goodLighting: false,
+          noObstructions: false,
+          imageSharp: false,
+          singleFace: false,
+        };
+
+    if (!result.detected) {
+      await guest.save();
+      return sendSuccess(res, {
+        guestId: guest._id,
+        faceImagePath: guest.faceImagePath,
+        status: guest.status,
+        qualityChecks,
+        enrolled: false,
+        retakeRequired: true,
+        reason: "No face detected in the image",
+      });
+    }
+
+    if (result.raw.length > 1) {
+      qualityChecks.singleFace = false;
+    }
+
+    if (!result.qualityPassed || !qualityChecks.singleFace) {
+      await guest.save();
+      return sendSuccess(res, {
+        guestId: guest._id,
+        faceImagePath: guest.faceImagePath,
+        status: guest.status,
+        qualityChecks,
+        enrolled: false,
+        retakeRequired: true,
+        reason: "Image quality checks failed. Please retake the photo.",
+      });
+    }
+
+    const galleryId = guest.eventId.toString();
+    const personId = guest._id.toString();
+    await youverse.enrollInGallery(galleryId, personId, result.template!);
+
+    guest.faceTemplateId = personId;
+    guest.status = "FaceCaptured";
+    await guest.save();
+
+    await ActivityLog.create({
+      eventId: guest.eventId,
+      guestId: guest._id,
+      action: "face_captured",
+      details: `${guest.fullName} uploaded face image and enrolled in face recognition`,
+    });
+
+    return sendSuccess(res, {
+      guestId: guest._id,
+      faceImagePath: guest.faceImagePath,
+      status: guest.status,
+      qualityChecks,
+      enrolled: true,
+    });
+  } catch (err: any) {
+    console.error("Youverse face processing error:", err.message);
+
+    guest.status = "FaceCaptured";
+    await guest.save();
+
+    await ActivityLog.create({
+      eventId: guest.eventId,
+      guestId: guest._id,
+      action: "face_captured",
+      details: `${guest.fullName} uploaded face image (face enrollment pending)`,
+    });
+
+    return sendSuccess(res, {
+      guestId: guest._id,
+      faceImagePath: guest.faceImagePath,
+      status: guest.status,
+      qualityChecks: {
+        faceDetected: true,
+        faceCentered: true,
+        goodLighting: true,
+        noObstructions: true,
+        imageSharp: true,
+        singleFace: true,
+      },
+      enrolled: false,
+      retakeRequired: false,
+      reason: "Face processing service temporarily unavailable. Image saved for later enrollment.",
+    });
+  }
 }
 
 export async function confirmRegistration(req: Request, res: Response) {

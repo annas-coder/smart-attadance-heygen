@@ -10,6 +10,7 @@ import {
   Sun,
   User,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { registration } from "../../../lib/api";
 
@@ -18,9 +19,13 @@ export function FaceCapture() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
+  const [enrolled, setEnrolled] = useState(false);
   const [checks, setChecks] = useState({
     faceDetected: false,
     faceCentered: false,
@@ -31,21 +36,10 @@ export function FaceCapture() {
   });
 
   useEffect(() => {
-    // Simulate checks passing after camera is active
-    if (cameraActive && !capturedImage) {
-      const timer = setTimeout(() => {
-        setChecks({
-          faceDetected: true,
-          faceCentered: true,
-          goodLighting: true,
-          noObstructions: true,
-          imageSharp: true,
-          singleFace: true,
-        });
-      }, 1500);
-      return () => clearTimeout(timer);
+    if (cameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
     }
-  }, [cameraActive, capturedImage]);
+  }, [cameraActive]);
 
   const startCamera = async () => {
     try {
@@ -53,12 +47,9 @@ export function FaceCapture() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraActive(true);
-      }
+      streamRef.current = stream;
+      setCameraActive(true);
     } catch (err) {
-      // Silently handle camera permission denial
       setCameraError(
         "Camera access denied. Please use the Upload button to select a photo instead."
       );
@@ -72,17 +63,26 @@ export function FaceCapture() {
       reader.onload = (e) => {
         const imageData = e.target?.result as string;
         setCapturedImage(imageData);
-        // Simulate all checks passing for uploaded images
+        setEnrollmentError(null);
+        setEnrolled(false);
         setChecks({
-          faceDetected: true,
-          faceCentered: true,
-          goodLighting: true,
-          noObstructions: true,
-          imageSharp: true,
-          singleFace: true,
+          faceDetected: false,
+          faceCentered: false,
+          goodLighting: false,
+          noObstructions: false,
+          imageSharp: false,
+          singleFace: false,
         });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const stopCameraStream = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -97,9 +97,9 @@ export function FaceCapture() {
         ctx.drawImage(video, 0, 0);
         const imageData = canvas.toDataURL("image/jpeg");
         setCapturedImage(imageData);
-        // Stop camera
-        const stream = video.srcObject as MediaStream;
-        stream?.getTracks().forEach((track) => track.stop());
+        setEnrollmentError(null);
+        setEnrolled(false);
+        stopCameraStream();
         setCameraActive(false);
       }
     }
@@ -107,6 +107,8 @@ export function FaceCapture() {
 
   const retake = () => {
     setCapturedImage(null);
+    setEnrollmentError(null);
+    setEnrolled(false);
     setChecks({
       faceDetected: false,
       faceCentered: false,
@@ -122,17 +124,43 @@ export function FaceCapture() {
     if (!capturedImage) return;
 
     const guestId = sessionStorage.getItem("guestId");
-    if (guestId) {
-      try {
-        const blob = await fetch(capturedImage).then((r) => r.blob());
-        await registration.uploadFace(guestId, blob);
-      } catch (err) {
-        console.error("Face upload failed:", err);
-      }
+    if (!guestId) {
+      sessionStorage.setItem("faceImage", capturedImage);
+      navigate("/register/review");
+      return;
     }
 
-    sessionStorage.setItem("faceImage", capturedImage);
-    navigate("/register/review");
+    setIsProcessing(true);
+    setEnrollmentError(null);
+
+    try {
+      const blob = await fetch(capturedImage).then((r) => r.blob());
+      const result = await registration.uploadFace(guestId, blob);
+
+      if (result.qualityChecks) {
+        setChecks(result.qualityChecks);
+      }
+
+      if (result.enrolled) {
+        setEnrolled(true);
+        sessionStorage.setItem("faceImage", capturedImage);
+        navigate("/register/review");
+      } else if (result.retakeRequired) {
+        setEnrollmentError(result.reason || "Please retake the photo.");
+      } else {
+        if (result.reason) {
+          console.warn("Face enrollment note:", result.reason);
+        }
+        sessionStorage.setItem("faceImage", capturedImage);
+        navigate("/register/review");
+      }
+    } catch (err) {
+      console.error("Face upload failed:", err);
+      sessionStorage.setItem("faceImage", capturedImage);
+      navigate("/register/review");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const allChecksPassed = Object.values(checks).every((v) => v === true);
@@ -298,17 +326,59 @@ export function FaceCapture() {
                       alt="Captured"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-4 left-4 bg-[#34D399] text-white px-4 py-2 rounded-full font-medium flex items-center gap-2">
-                      <Check className="w-4 h-4" />
-                      Looking good!
-                    </div>
+                    {isProcessing && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-3 text-white">
+                          <Loader2 className="w-8 h-8 animate-spin" />
+                          <span className="font-medium">Analyzing face...</span>
+                        </div>
+                      </div>
+                    )}
+                    {!isProcessing && enrolled && (
+                      <div className="absolute top-4 left-4 bg-[#34D399] text-white px-4 py-2 rounded-full font-medium flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        Face enrolled successfully!
+                      </div>
+                    )}
+                    {!isProcessing && !enrolled && !enrollmentError && (
+                      <div className="absolute top-4 left-4 bg-[#34D399] text-white px-4 py-2 rounded-full font-medium flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        Looking good!
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Quality Checklist */}
+            {/* Camera active indicator */}
             {cameraActive && !capturedImage && (
+              <div className="mb-6 text-center">
+                <p className="text-sm text-[#64748B]">
+                  Position your face within the frame and click <strong>Capture Photo</strong>
+                </p>
+              </div>
+            )}
+
+            {/* Enrollment Error */}
+            {enrollmentError && (
+              <div className="bg-[#FEF2F2] border border-[#FCA5A5] rounded-[14px] p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#DC2626] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3 h-3 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#991B1B] mb-1">
+                      Quality Check Failed
+                    </p>
+                    <p className="text-sm text-[#7F1D1D]">{enrollmentError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quality Checklist after capture */}
+            {capturedImage && enrollmentError && (
               <div className="mb-6 grid md:grid-cols-2 gap-3">
                 {[
                   { key: "faceDetected", label: "Face detected" },
@@ -353,7 +423,7 @@ export function FaceCapture() {
                   </Link>
                   <button
                     onClick={capturePhoto}
-                    disabled={!allChecksPassed}
+                    disabled={!cameraActive}
                     className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Camera className="w-5 h-5" />
@@ -391,10 +461,20 @@ export function FaceCapture() {
                   </button>
                   <button
                     onClick={confirmPhoto}
-                    className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90 flex items-center justify-center gap-2"
+                    disabled={isProcessing}
+                    className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    <Check className="w-5 h-5" />
-                    Use This Photo
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Use This Photo
+                      </>
+                    )}
                   </button>
                 </>
               )}

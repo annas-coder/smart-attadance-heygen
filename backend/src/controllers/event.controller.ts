@@ -4,6 +4,7 @@ import { Event } from "../models/Event.js";
 import { Guest } from "../models/Guest.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { sendSuccess, sendError } from "../utils/apiResponse.js";
+import * as youverse from "../services/youverseService.js";
 
 const createEventSchema = z.object({
   name: z.string().min(1),
@@ -91,6 +92,10 @@ export async function createEvent(req: Request, res: Response) {
       details: `Event "${event.name}" was created`,
     });
 
+    youverse.createGallery(event._id.toString()).catch((err) => {
+      console.error("Failed to create Youverse gallery for event:", err.message);
+    });
+
     return sendSuccess(res, event, 201);
   } catch (err: any) {
     if (err.name === "ZodError") {
@@ -127,5 +132,10 @@ export async function deleteEvent(req: Request, res: Response) {
   }
   await Guest.deleteMany({ eventId: event._id });
   await ActivityLog.deleteMany({ eventId: event._id });
+
+  youverse.deleteGallery(event._id.toString()).catch((err) => {
+    console.error("Failed to delete Youverse gallery for event:", err.message);
+  });
+
   return sendSuccess(res, { message: "Event deleted" });
 }

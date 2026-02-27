@@ -29,7 +29,10 @@ export function ProfileSetup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!eventId) return;
+    if (!eventId) {
+      alert("No events available for registration at the moment. Please try again later.");
+      return;
+    }
 
     setSubmitting(true);
     try {

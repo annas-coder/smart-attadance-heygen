@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { lookupGuest, checkinGuest } from "../controllers/kiosk.controller.js";
+import { lookupGuest, checkinGuest, faceIdentify } from "../controllers/kiosk.controller.js";
 import { handleGeneralChat, handleUserChat } from "../controllers/chat.controller.js";
 
 const router = Router();
 
 router.post("/lookup", lookupGuest);
 router.post("/checkin/:guestId", checkinGuest);
+router.post("/face-identify", faceIdentify);
 router.post("/chat", handleGeneralChat);
 router.post("/chat/user", handleUserChat);
 

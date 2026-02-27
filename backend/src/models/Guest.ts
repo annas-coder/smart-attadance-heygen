@@ -14,6 +14,7 @@ export interface IGuest extends Document {
   status: GuestStatus;
   registrationId?: string;
   faceImagePath?: string;
+  faceTemplateId?: string;
   eventId: mongoose.Types.ObjectId;
   agenda?: {
     sessions: Array<{
@@ -50,6 +51,7 @@ const guestSchema = new Schema<IGuest>(
     },
     registrationId: { type: String, unique: true, sparse: true },
     faceImagePath: { type: String },
+    faceTemplateId: { type: String },
     eventId: {
       type: Schema.Types.ObjectId,
       ref: "Event",

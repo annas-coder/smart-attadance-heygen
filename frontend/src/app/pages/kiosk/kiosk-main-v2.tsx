@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Home, MessageCircle, Mic, X, Mail, Hash, ArrowRight, Scan, User, MapPin, Calendar, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
-import { kiosk } from "../../../lib/api";
+import { kiosk, events } from "../../../lib/api";
 import * as heygenService from "../../../lib/heygenService";
 import * as voiceService from "../../../lib/voiceService";
 import { fetchGeneralChatResponse, fetchUserChatResponse } from "../../../lib/kioskChat";
@@ -23,7 +23,7 @@ const DEMO_PEOPLE = [
   { id: "VIS-102", nm: "Lisa Park", dg: "Keynote Speaker", dp: "External · AI Labs", photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face", ev: "Tech Summit 2026", et: "10 AM–4 PM", hl: "Hall A — Auditorium", fl: "Ground Floor", st: "STAGE" },
 ];
 
-type KioskState = "menu" | "face-scanning" | "manual-checkin" | "chat" | "welcome";
+type KioskState = "menu" | "face-scanning" | "manual-checkin" | "chat" | "welcome" | "face-not-recognized";
 
 interface UserData {
   fullName: string;
@@ -63,13 +63,34 @@ export function KioskMain() {
   
   const [heygenActive, setHeygenActive] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const scanCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const heygenVideoRef = useRef<HTMLVideoElement>(null);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
   const chromaCanvasRef = useChromaKey(heygenVideoRef, heygenActive);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const welcomeScrollRef = useRef<HTMLDivElement>(null);
+
+  // Resolve event ID: prefer sessionStorage, fallback to first public event
+  useEffect(() => {
+    const stored = sessionStorage.getItem("eventId");
+    if (stored) {
+      setActiveEventId(stored);
+      return;
+    }
+    events.listPublic().then((list) => {
+      if (list.length > 0) {
+        const id = list[0]._id;
+        setActiveEventId(id);
+        sessionStorage.setItem("eventId", id);
+      } else {
+        console.warn("Kiosk: No public events available for face recognition");
+      }
+    }).catch((err) => console.error("Kiosk: Failed to fetch events:", err));
+  }, []);
 
   // Update clock
   useEffect(() => {
@@ -94,7 +115,6 @@ export function KioskMain() {
   useEffect(() => {
     if (state === "face-scanning") {
       startCamera();
-      setTimeout(() => handleFaceScan(), 500);
     } else {
       stopCamera();
     }
@@ -187,9 +207,9 @@ export function KioskMain() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: 1920, height: 1080 },
       });
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        streamRef.current = stream;
       }
     } catch (err) {
       console.log("Camera not available");
@@ -206,34 +226,105 @@ export function KioskMain() {
     }
   };
 
+  // Attach stream to video element once it renders
+  useEffect(() => {
+    if (state === "face-scanning" && videoRef.current && streamRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  });
+
+  const captureFrameAsBase64 = (): string | null => {
+    const video = videoRef.current;
+    const canvas = scanCanvasRef.current;
+    if (!video || !canvas || video.videoWidth === 0) return null;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    return dataUrl.split(",")[1];
+  };
+
   const handleFaceScan = () => {
     setIsScanning(true);
     setScanProgress(0);
-    
+    setScanMessage(null);
+
     const interval = setInterval(() => {
       setScanProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          setIsScanning(false);
           recognizeUser();
           return 100;
         }
-        return prev + 10;
+        return prev + 2;
       });
-    }, 200);
+    }, 120);
   };
 
   const recognizeUser = async () => {
-    const storedData = sessionStorage.getItem("registrationData");
-    const storedImage = sessionStorage.getItem("faceImage");
+    const imageBase64 = captureFrameAsBase64();
 
-    let data;
+    if (!activeEventId) {
+      console.error("Kiosk: No eventId available for face recognition");
+      setScanMessage("Kiosk not configured — no event selected");
+      setIsScanning(false);
+      setState("face-not-recognized");
+      return;
+    }
+
+    if (!imageBase64) {
+      console.error("Kiosk: Failed to capture camera frame");
+      setScanMessage("Camera capture failed — please try again");
+      setIsScanning(false);
+      setState("face-not-recognized");
+      return;
+    }
+
+    try {
+      const result = await kiosk.faceIdentify(imageBase64, activeEventId);
+
+      if (result.matched && result.guest) {
+        const g = result.guest;
+        const user: UserData = {
+          fullName: g.fullName,
+          designation: g.designation || "",
+          company: g.company || "",
+          email: g.email,
+          registrationId: g.registrationId || "FF2026-SCAN",
+          faceImage: undefined,
+          agenda: {
+            currentSession: g.agenda?.sessions?.[0] || {
+              title: "Keynote: Future of Financial Technology",
+              location: "Grand Ballroom, Floor 2",
+              time: "2:00 PM - 3:00 PM",
+            },
+          },
+        };
+        setUserData(user);
+        setIsScanning(false);
+        setState("welcome");
+        return;
+      }
+
+      console.warn("Kiosk: Face not matched. Reason:", result.reason, "Score:", result.score);
+      setScanMessage(result.reason || "Face not recognized");
+    } catch (err) {
+      console.error("Kiosk: Face identify API error:", err);
+      setScanMessage("Face recognition service unavailable");
+    }
+
+    // Fallback: try email lookup if registration data exists in session
+    const storedData = sessionStorage.getItem("registrationData");
     if (storedData) {
-      data = JSON.parse(storedData);
+      const data = JSON.parse(storedData);
       try {
         const result = await kiosk.lookup(data.email, "email");
         const g = result.guest;
-        try { await kiosk.checkin(g._id); } catch { /* 409 = already checked in, proceed */ }
+        try { await kiosk.checkin(g._id); } catch { /* 409 = already checked in */ }
         const user: UserData = {
           fullName: g.fullName,
           designation: g.designation || data.designation,
@@ -250,31 +341,16 @@ export function KioskMain() {
           },
         };
         setUserData(user);
+        setIsScanning(false);
         setState("welcome");
         return;
       } catch (err) {
-        console.error("Kiosk lookup failed:", err);
+        console.error("Kiosk: Email lookup fallback failed:", err);
       }
     }
 
-    const person = DEMO_PEOPLE[Math.floor(Math.random() * DEMO_PEOPLE.length)];
-    const user: UserData = {
-      fullName: person.nm,
-      designation: person.dg,
-      company: person.dp,
-      email: `${person.nm.toLowerCase().replace(/\s+/g, ".")}@demo.com`,
-      faceImage: undefined,
-      registrationId: person.id,
-      agenda: {
-        currentSession: {
-          title: person.ev,
-          location: `${person.hl}, ${person.fl}`,
-          time: person.et,
-        },
-      },
-    };
-    setUserData(user);
-    setState("welcome");
+    setIsScanning(false);
+    setState("face-not-recognized");
   };
 
   const processManualCheckIn = async () => {
@@ -345,6 +421,7 @@ export function KioskMain() {
     setWelcomeConversation([]);
     setUserData(null);
     setManualInput("");
+    setScanMessage(null);
     setScanProgress(0);
     setIsScanning(false);
     setState("menu");
@@ -379,6 +456,7 @@ export function KioskMain() {
 
       {/* Hidden HeyGen video element (always in DOM for stable stream) */}
       <video ref={heygenVideoRef} autoPlay playsInline className="hidden" />
+      <canvas ref={scanCanvasRef} className="hidden" />
 
       <AnimatePresence mode="wait">
         {/* ==================== MENU ==================== */}
@@ -477,8 +555,18 @@ export function KioskMain() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60"></div>
 
+                {/* Face alignment guide (always visible when camera active) */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-[280px] h-[360px] sm:w-[320px] sm:h-[420px] md:w-[360px] md:h-[460px] border-2 border-dashed border-white/30 rounded-[30px] relative">
+                    <div className="absolute -top-1 -left-1 w-16 h-16 border-t-4 border-l-4 border-[#22D3EE] rounded-tl-[30px]"></div>
+                    <div className="absolute -top-1 -right-1 w-16 h-16 border-t-4 border-r-4 border-[#22D3EE] rounded-tr-[30px]"></div>
+                    <div className="absolute -bottom-1 -left-1 w-16 h-16 border-b-4 border-l-4 border-[#22D3EE] rounded-bl-[30px]"></div>
+                    <div className="absolute -bottom-1 -right-1 w-16 h-16 border-b-4 border-r-4 border-[#22D3EE] rounded-br-[30px]"></div>
+                  </div>
+                </div>
+
                 {isScanning && (
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <motion.div
                       animate={{ opacity: [0.3, 0.6, 0.3] }}
                       transition={{ duration: 2, repeat: Infinity }}
@@ -493,15 +581,10 @@ export function KioskMain() {
                     />
                     <motion.div
                       animate={{ y: ['-50%', '150%'] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
                       className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#22D3EE] to-transparent shadow-[0_0_20px_rgba(34,211,238,0.8)]"
                     />
-                    <div className="w-64 h-80 border-2 border-[#22D3EE] rounded-[20px] relative">
-                      <div className="absolute -top-1 -left-1 w-12 h-12 border-t-4 border-l-4 border-[#22D3EE] rounded-tl-[20px]"></div>
-                      <div className="absolute -top-1 -right-1 w-12 h-12 border-t-4 border-r-4 border-[#22D3EE] rounded-tr-[20px]"></div>
-                      <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-4 border-l-4 border-[#22D3EE] rounded-bl-[20px]"></div>
-                      <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-4 border-r-4 border-[#22D3EE] rounded-br-[20px]"></div>
-                    </div>
+                    <div className="w-[280px] h-[360px] sm:w-[320px] sm:h-[420px] md:w-[360px] md:h-[460px] border-2 border-[#22D3EE] rounded-[30px]"></div>
                   </div>
                 )}
 
@@ -517,8 +600,24 @@ export function KioskMain() {
                     {isScanning ? 'Identifying...' : 'Position Your Face'}
                   </h2>
                   <p className="text-base text-white/90 text-center font-medium drop-shadow-md">
-                    {isScanning ? 'Please hold still' : 'Look at the camera'}
+                    {isScanning ? 'Please hold still' : 'Align your face within the frame, then tap Start Scan'}
                   </p>
+                  {scanMessage && !isScanning && (
+                    <p className="text-sm text-[#FB7185] text-center font-medium mt-2 drop-shadow-md">
+                      {scanMessage}
+                    </p>
+                  )}
+                  {!isScanning && (
+                    <div className="flex justify-center mt-4">
+                      <button
+                        onClick={handleFaceScan}
+                        className="px-8 py-3 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] rounded-full font-black text-white shadow-[0_0_30px_rgba(34,211,238,0.4)] hover:shadow-[0_0_50px_rgba(34,211,238,0.6)] transition-all flex items-center gap-2"
+                      >
+                        <Scan className="w-5 h-5" />
+                        Start Scan
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1031,7 +1130,7 @@ export function KioskMain() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.3 }}
-                        className="flex justify-start"
+                        className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div className={`max-w-[85%] rounded-[24px] px-5 py-3.5 backdrop-blur-sm ${
                           msg.type === 'user'
@@ -1172,6 +1271,53 @@ export function KioskMain() {
                     <X className="w-6 h-6" />
                   </motion.button>
                 </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        {/* ==================== FACE NOT RECOGNIZED ==================== */}
+        {state === "face-not-recognized" && (
+          <motion.div
+            key="face-not-recognized"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="h-full w-full flex flex-col items-center justify-center px-6 pt-16 pb-6"
+          >
+            <div className="w-full max-w-xl">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-8 text-center">
+                <div className="w-20 h-20 rounded-full bg-[#FB7185]/20 flex items-center justify-center mx-auto mb-6">
+                  <X className="w-10 h-10 text-[#FB7185]" />
+                </div>
+                <h2 className="text-3xl font-black mb-3 text-white">
+                  Face Not Recognized
+                </h2>
+                <p className="text-base text-white/70 mb-8">
+                  We couldn't match your face. Please try again or use manual check-in.
+                </p>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => { setScanMessage(null); setState("face-scanning"); }}
+                    className="w-full px-6 py-4 rounded-[14px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] font-black text-white flex items-center justify-center gap-2"
+                  >
+                    <Scan className="w-5 h-5" />
+                    Try Again
+                  </button>
+                  <button
+                    onClick={() => setState("manual-checkin")}
+                    className="w-full px-6 py-4 rounded-[14px] bg-white/10 border border-white/20 font-black text-white flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
+                  >
+                    <User className="w-5 h-5" />
+                    Manual Check-In
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-[10px] text-sm font-bold hover:bg-white/10 transition-all"
+                  >
+                    ← Back to Menu
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
