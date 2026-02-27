@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { kiosk, events } from "../../../lib/api";
 import * as heygenService from "../../../lib/heygenService";
 import * as voiceService from "../../../lib/voiceService";
-import { fetchGeneralChatResponse, fetchUserChatResponse } from "../../../lib/kioskChat";
+import { fetchGeneralChatResponse, fetchUserChatResponse, type UserProfile } from "../../../lib/kioskChat";
 import { useChromaKey } from "../../hooks/useChromaKey";
 const aiAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2322D3EE'/%3E%3Cstop offset='100%25' stop-color='%238B5CF6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g)'/%3E%3Ctext x='100' y='115' text-anchor='middle' font-size='64' fill='white' font-family='sans-serif'%3EAI%3C/text%3E%3C/svg%3E";
 
@@ -191,7 +191,17 @@ export function KioskMain() {
     setWelcomeConversation(prev => [...prev, { type: "user", text: message, timestamp: new Date() }]);
     setIsSpeaking(true);
     try {
-      const response = await fetchUserChatResponse(message, userData?.fullName || "Guest");
+      const profile: UserProfile = {
+        fullName: userData?.fullName || "Guest",
+        designation: userData?.designation,
+        company: userData?.company,
+        email: userData?.email,
+        registrationId: userData?.registrationId,
+        agenda: userData?.agenda?.currentSession
+          ? [userData.agenda.currentSession]
+          : undefined,
+      };
+      const response = await fetchUserChatResponse(message, profile);
       setWelcomeConversation(prev => [...prev, { type: "assistant", text: response, timestamp: new Date() }]);
       heygenService.sendTextToAvatar(response);
     } catch {

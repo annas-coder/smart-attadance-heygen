@@ -15,11 +15,20 @@ export async function fetchGeneralChatResponse(message: string): Promise<string>
   return json.data?.response ?? json.response ?? '';
 }
 
-export async function fetchUserChatResponse(message: string, user: string): Promise<string> {
+export interface UserProfile {
+  fullName: string;
+  designation?: string;
+  company?: string;
+  email?: string;
+  registrationId?: string;
+  agenda?: { title: string; location: string; time: string }[];
+}
+
+export async function fetchUserChatResponse(message: string, profile: UserProfile): Promise<string> {
   const res = await fetch(`${API_BASE}/chat/user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, sessionId, user }),
+    body: JSON.stringify({ message, sessionId, userProfile: profile }),
   });
   if (!res.ok) {
     throw new Error(`User chat API error: ${res.status}`);

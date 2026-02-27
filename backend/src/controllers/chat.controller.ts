@@ -8,10 +8,23 @@ const generalChatSchema = z.object({
   sessionId: z.string().min(1),
 });
 
+const userProfileSchema = z.object({
+  fullName: z.string().min(1),
+  designation: z.string().optional(),
+  company: z.string().optional(),
+  email: z.string().optional(),
+  registrationId: z.string().optional(),
+  agenda: z.array(z.object({
+    title: z.string(),
+    location: z.string(),
+    time: z.string(),
+  })).optional(),
+});
+
 const userChatSchema = z.object({
   message: z.string().min(1),
   sessionId: z.string().min(1),
-  user: z.string().min(1),
+  userProfile: userProfileSchema,
 });
 
 export async function handleGeneralChat(req: Request, res: Response) {
@@ -30,8 +43,8 @@ export async function handleGeneralChat(req: Request, res: Response) {
 
 export async function handleUserChat(req: Request, res: Response) {
   try {
-    const { message, sessionId, user } = userChatSchema.parse(req.body);
-    const response = await userChat(sessionId, message, user);
+    const { message, sessionId, userProfile } = userChatSchema.parse(req.body);
+    const response = await userChat(sessionId, message, userProfile);
     return sendSuccess(res, { response });
   } catch (err: any) {
     if (err.name === "ZodError") {
