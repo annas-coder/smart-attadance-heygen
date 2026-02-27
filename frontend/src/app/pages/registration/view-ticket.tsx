@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useState } from "react";
 import { Search, Home, QrCode, Download, Calendar, Share2, AlertCircle } from "lucide-react";
-import { registration, kiosk } from "../../../lib/api";
+import { registration, kiosk, resolveUploadUrl } from "../../../lib/api";
 
 export function ViewTicket() {
   const [searchMethod, setSearchMethod] = useState<"email" | "id">("email");
@@ -26,7 +26,7 @@ export function ViewTicket() {
         designation: g.designation,
         company: g.company,
         badge: g.badge || "General",
-        faceImage: g.faceImagePath,
+        faceImage: resolveUploadUrl(g.faceImagePath),
         registrationId: g.registrationId || "N/A",
         event: data.event,
       });

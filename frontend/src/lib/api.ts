@@ -1,5 +1,12 @@
 const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api`;
 
+export function resolveUploadUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("data:") || path.startsWith("http")) return path;
+  const base = import.meta.env.VITE_API_URL || "";
+  return `${base}${path}`;
+}
+
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("token");
   const headers: Record<string, string> = {

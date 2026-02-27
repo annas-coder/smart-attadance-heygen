@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { useEffect, useState } from "react";
 import { Check, Download, Calendar, Share2, Home, QrCode } from "lucide-react";
 import { motion } from "motion/react";
-import { registration } from "../../../lib/api";
+import { registration, resolveUploadUrl } from "../../../lib/api";
 
 export function RegistrationSuccess() {
   const [formData, setFormData] = useState<any>(null);
@@ -25,7 +25,7 @@ export function RegistrationSuccess() {
           badge: guest.badge,
         });
         if (guest.faceImagePath) {
-          setFaceImage(guest.faceImagePath);
+          setFaceImage(resolveUploadUrl(guest.faceImagePath));
         }
         if (data.event) {
           setEventData(data.event);
