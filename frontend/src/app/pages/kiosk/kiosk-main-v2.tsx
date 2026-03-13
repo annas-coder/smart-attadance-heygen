@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import { Home, MessageCircle, Mic, X, Mail, Hash, ArrowRight, Scan, User, MapPin, Calendar, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
@@ -29,30 +29,19 @@ function SmileyLoader() {
   ];
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0d0d1a] via-[#111128] to-[#0a0a1e] relative overflow-hidden">
-      {/* Ambient glow blobs */}
-      <motion.div
-        className="absolute w-72 h-72 rounded-full blur-[120px]"
-        style={{ background: "radial-gradient(circle, rgba(34,211,238,0.15), transparent 70%)" }}
-        animate={{ x: [-30, 30, -30], y: [-20, 20, -20] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute w-72 h-72 rounded-full blur-[120px]"
-        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12), transparent 70%)" }}
-        animate={{ x: [30, -30, 30], y: [20, -20, 20] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-      />
+    <div className="w-full h-full flex flex-col items-center justify-center min-h-0 overflow-hidden bg-gradient-to-br from-[#0d0d1a] via-[#111128] to-[#0a0a1e] relative">
+      {/* Ambient glow blobs - Simplified for TV */}
+      <div className="absolute w-72 h-72 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(34,211,238,0.1), transparent 70%)" }} />
+      <div className="absolute w-72 h-72 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.1), transparent 70%)" }} />
 
-      {/* Main content */}
+      {/* Main content - scales to fit card */}
       <motion.div
-        className="relative z-10 flex flex-col items-center"
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+        className="relative z-10 flex flex-col items-center justify-center flex-1 min-h-0 min-w-0 w-full"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 1 }}
       >
-        {/* Outer spinning ring */}
-        <div className="relative w-56 h-56 md:w-64 md:h-64">
+        {/* Outer spinning ring - constrained to fit */}
+        <div className="relative w-full max-w-full aspect-square max-h-[55%] flex-shrink-0">
           <motion.div
             className="absolute inset-0 rounded-full"
             style={{
@@ -245,7 +234,7 @@ function SmileyLoader() {
             </motion.svg>
           </div>
 
-          {/* Orbiting particles */}
+          {/* Orbiting particles - scale with container */}
           {PARTICLES.map((p, i) => (
             <motion.div
               key={i}
@@ -282,15 +271,15 @@ function SmileyLoader() {
           ))}
         </div>
 
-        {/* Loading section */}
+        {/* Loading section - compact so it fits in card */}
         <motion.div
-          className="mt-8 flex flex-col items-center gap-4"
-          initial={{ opacity: 0, y: 16 }}
+          className="mt-2 flex flex-col items-center flex-shrink-0"
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.6 }}
         >
           {/* Glowing progress bar */}
-          <div className="w-44 h-1 rounded-full bg-white/5 overflow-hidden relative">
+          <div className="w-24 max-w-full h-1 rounded-full bg-white/5 overflow-hidden relative mb-2">
             <motion.div
               className="absolute inset-y-0 left-0 rounded-full"
               style={{
@@ -312,21 +301,19 @@ function SmileyLoader() {
           </div>
 
           {/* Text */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <motion.span
-              className="text-xs font-semibold tracking-[0.2em] uppercase"
-              style={{ background: "linear-gradient(90deg, #22D3EE, #8B5CF6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+              className="text-[10px] font-semibold tracking-wider uppercase text-[#22D3EE] mr-0.5"
               animate={{ opacity: [0.6, 1, 0.6] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
               Assistant is loading
             </motion.span>
-            <span className="flex gap-[2px]">
+            <span className="flex">
               {[0, 1, 2].map((i) => (
                 <motion.span
                   key={i}
-                  className="text-xs font-semibold"
-                  style={{ background: "linear-gradient(90deg, #22D3EE, #8B5CF6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  className="text-[10px] font-semibold text-[#22D3EE] mx-[1px]"
                   animate={{ opacity: [0, 1, 0] }}
                   transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }}
                 >
@@ -379,6 +366,7 @@ interface ConversationMessage {
 }
 
 export function KioskMain() {
+  const navigate = useNavigate();
   const [state, setState] = useState<KioskState>("menu");
   const [userData, setUserData] = useState<UserData | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -391,12 +379,12 @@ export function KioskMain() {
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [currentResponse, setCurrentResponse] = useState("");
   const [welcomeConversation, setWelcomeConversation] = useState<ConversationMessage[]>([]);
-  
+
   const [heygenActive, setHeygenActive] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [manualError, setManualError] = useState<string | null>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const scanCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -405,6 +393,7 @@ export function KioskMain() {
   const chromaCanvasRef = useChromaKey(heygenVideoRef, heygenActive);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const welcomeScrollRef = useRef<HTMLDivElement>(null);
+  const scanningInProgressRef = useRef(false);
 
   // Resolve event ID: prefer sessionStorage, fallback to first public event
   useEffect(() => {
@@ -446,11 +435,15 @@ export function KioskMain() {
   // Auto-start camera when in face scanning mode
   useEffect(() => {
     if (state === "face-scanning") {
+      scanningInProgressRef.current = false;
+      setScanMessage(null);
+      setScanProgress(0);
+      setIsScanning(false);
       startCamera();
     } else {
       stopCamera();
     }
-    
+
     return () => stopCamera();
   }, [state]);
 
@@ -470,15 +463,15 @@ export function KioskMain() {
         heygenVideoRef.current!,
         () => setHeygenActive(true),
         () => setHeygenActive(false),
-        () => {},
-        () => { heygenService.closeSession().catch(() => {}); setHeygenActive(false); },
+        () => { },
+        () => { heygenService.closeSession().catch(() => { }); setHeygenActive(false); },
         customWelcome,
       ).catch(console.error);
     }
 
     return () => {
       if (shouldConnect) {
-        heygenService.closeSession().catch(() => {});
+        heygenService.closeSession().catch(() => { });
         setHeygenActive(false);
       }
     };
@@ -590,7 +583,31 @@ export function KioskMain() {
     return dataUrl.split(",")[1];
   };
 
+  /** Wait for video to have valid dimensions, then capture (with retries). */
+  const captureFrameWithRetry = (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 25; // ~2.5s
+      const tryCapture = () => {
+        const base64 = captureFrameAsBase64();
+        if (base64) {
+          resolve(base64);
+          return;
+        }
+        attempts += 1;
+        if (attempts >= maxAttempts) {
+          resolve(null);
+          return;
+        }
+        setTimeout(tryCapture, 100);
+      };
+      tryCapture();
+    });
+  };
+
   const handleFaceScan = () => {
+    if (scanningInProgressRef.current) return;
+    scanningInProgressRef.current = true;
     setIsScanning(true);
     setScanProgress(0);
     setScanMessage(null);
@@ -608,9 +625,10 @@ export function KioskMain() {
   };
 
   const recognizeUser = async () => {
-    const imageBase64 = captureFrameAsBase64();
+    const imageBase64 = await captureFrameWithRetry();
 
     if (!activeEventId) {
+      scanningInProgressRef.current = false;
       console.error("Kiosk: No eventId available for face recognition");
       setScanMessage("Kiosk not configured — no event selected");
       setIsScanning(false);
@@ -619,8 +637,9 @@ export function KioskMain() {
     }
 
     if (!imageBase64) {
-      console.error("Kiosk: Failed to capture camera frame");
-      setScanMessage("Camera capture failed — please try again");
+      scanningInProgressRef.current = false;
+      console.error("Kiosk: Failed to capture camera frame (video may not be ready)");
+      setScanMessage("Camera not ready — please try again");
       setIsScanning(false);
       setState("face-not-recognized");
       return;
@@ -647,6 +666,7 @@ export function KioskMain() {
           },
         };
         setUserData(user);
+        scanningInProgressRef.current = false;
         setIsScanning(false);
         setState("welcome");
         return;
@@ -683,6 +703,7 @@ export function KioskMain() {
           },
         };
         setUserData(user);
+        scanningInProgressRef.current = false;
         setIsScanning(false);
         setState("welcome");
         return;
@@ -691,6 +712,7 @@ export function KioskMain() {
       }
     }
 
+    scanningInProgressRef.current = false;
     setIsScanning(false);
     setState("face-not-recognized");
   };
@@ -729,8 +751,8 @@ export function KioskMain() {
   };
 
   const handleReset = useCallback(() => {
-    try { voiceService.stopListening(); } catch {}
-    heygenService.closeSession().catch(() => {});
+    try { voiceService.stopListening(); } catch { }
+    heygenService.closeSession().catch(() => { });
     setHeygenActive(false);
     setIsSpeaking(false);
     setIsListening(false);
@@ -748,915 +770,1002 @@ export function KioskMain() {
   }, []);
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-[#1a1a2e] via-[#0f0f1e] to-[#16213e] text-white font-['Plus_Jakarta_Sans'] relative overflow-hidden">
-      {/* Ambient Background Effects */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#22D3EE] rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#8B5CF6] rounded-full blur-[150px]"></div>
-      </div>
+    <>
+      <div className="fixed inset-0 w-full h-full bg-[#1a1a2e] text-white font-['Plus_Jakarta_Sans'] overflow-hidden pointer-events-auto" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%)' }}>
+        {/* Ambient Background Effects - Scaled for large screens */}
+        <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.15 }}>
+          <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.4) 0%, transparent 70%)' }}></div>
+          <div className="absolute bottom-0 right-1/4 w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.4) 0%, transparent 70%)' }}></div>
+        </div>
 
-      {/* Header - Compact */}
-      <div className="absolute top-0 left-0 right-0 z-20 border-b border-white/10 bg-black/20 backdrop-blur-md">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="text-white/60 hover:text-white transition-colors">
-              <Home className="w-4 h-4" />
-            </Link>
-            <div>
-              <h1 className="text-lg font-black bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent">
-                FutureFin Expo 2026
-              </h1>
+        {/* Header - Compact */}
+        <div className="absolute top-0 left-0 right-0 z-[100] border-b border-white pointer-events-auto" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: '#000000' }}>
+          <div className="px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="text-[#cccccc] hover:text-white transition-colors relative z-[110] pointer-events-auto cursor-pointer mr-4 bg-transparent border-none p-1"
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <Home className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl md:text-2xl font-black text-[#22D3EE] tracking-tight">
+                  FutureFin Expo 2026
+                </h1>
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="font-mono text-sm font-bold text-white">{currentTime.toLocaleTimeString()}</div>
+            <div className="text-right">
+              <div className="font-mono text-base md:text-lg font-bold text-white/90">{currentTime.toLocaleTimeString()}</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Hidden HeyGen video element (always in DOM for stable stream) */}
-      <video ref={heygenVideoRef} autoPlay playsInline className="hidden" />
-      <canvas ref={scanCanvasRef} className="hidden" />
+        {/* Hidden HeyGen video element (always in DOM for stable stream) */}
+        <video ref={heygenVideoRef} autoPlay playsInline className="hidden" />
+        <canvas ref={scanCanvasRef} className="hidden" />
 
-      <AnimatePresence mode="wait">
-        {/* ==================== MENU ==================== */}
-        {state === "menu" && (
-          <motion.div
-            key="menu"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex flex-col items-center justify-center px-6 pt-16 pb-6"
-          >
-            <div className="w-full max-w-4xl flex flex-col h-full justify-center">
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="text-center mb-8"
+        {/* ==================== MENU - Plain div for legacy browser + touch/kiosk click compatibility ==================== */}
+        <div
+          style={{
+            display: state === 'menu' ? 'flex' : 'none',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 80,
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '52px 24px 8px 24px',
+            pointerEvents: state === 'menu' ? 'auto' : 'none',
+            touchAction: 'manipulation',
+            isolation: 'isolate',
+          }}
+        >
+          <div style={{ width: '100%', maxWidth: '1200px', textAlign: 'center', position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
+            <h1 style={{ fontSize: 'min(2.5rem, 4vw)', fontWeight: 900, color: '#22D3EE', marginBottom: '12px', lineHeight: 1.1 }}>Welcome to FutureFin Summit 2026!</h1>
+            <p style={{ fontSize: 'min(1.1rem, 1.8vw)', color: '#ffffff', marginBottom: '24px', opacity: 0.8 }}>How would you like to proceed?</p>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '16px', position: 'relative', zIndex: 2 }}>
+              <button
+                type="button"
+                onClick={() => { setState("face-scanning"); }}
+                onTouchEnd={(e) => { e.preventDefault(); setState("face-scanning"); }}
+                style={{
+                  backgroundColor: 'rgba(30,41,59,0.95)',
+                  border: '2px solid rgba(34,211,238,0.5)',
+                  borderRadius: '20px',
+                  padding: '24px 20px',
+                  cursor: 'pointer',
+                  width: 'min(240px, 22vw)',
+                  margin: '0',
+                  position: 'relative',
+                  zIndex: 10,
+                  pointerEvents: 'auto',
+                  touchAction: 'manipulation',
+                  color: '#ffffff',
+                  fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
               >
-                <h1 className="text-5xl font-black mb-3 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent">
-                  Welcome to FutureFin Summit 2026!
-                </h1>
-                <p className="text-xl text-white/80 font-medium">
-                  How would you like to proceed?
-                </p>
-              </motion.div>
-
-              <div className="grid grid-cols-3 gap-6">
-                <motion.button
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  onClick={() => setState("face-scanning")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#22D3EE]/30 hover:border-[#22D3EE] rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#22D3EE]/20 to-[#8B5CF6]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <Scan className="w-10 h-10 text-[#22D3EE]" />
-                    </div>
-                    <h3 className="text-xl font-black mb-2">Face Recognition</h3>
-                    <p className="text-sm text-white/60 font-medium">Quick & secure check-in</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(34,211,238,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                    <Scan style={{ width: '32px', height: '32px', color: '#22D3EE' }} />
                   </div>
-                </motion.button>
+                  <h3 style={{ fontSize: 'min(1.1rem, 1.6vw)', fontWeight: 900, marginBottom: '8px' }}>Face Recognition</h3>
+                  <p style={{ fontSize: 'min(0.8rem, 1.2vw)', color: '#cccccc' }}>Quick &amp; secure check-in</p>
+                </div>
+              </button>
 
-                <motion.button
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  onClick={() => setState("manual-checkin")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-[#8B5CF6]/30 hover:border-[#8B5CF6] rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#8B5CF6]/20 to-[#22D3EE]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <User className="w-10 h-10 text-[#8B5CF6]" />
-                    </div>
-                    <h3 className="text-xl font-black mb-2">Manual Check-In</h3>
-                    <p className="text-sm text-white/60 font-medium">Enter credentials</p>
+              <button
+                type="button"
+                onClick={() => { setState("manual-checkin"); }}
+                onTouchEnd={(e) => { e.preventDefault(); setState("manual-checkin"); }}
+                style={{
+                  backgroundColor: 'rgba(30,41,59,0.95)',
+                  border: '2px solid rgba(139,92,246,0.5)',
+                  borderRadius: '20px',
+                  padding: '24px 20px',
+                  cursor: 'pointer',
+                  width: 'min(240px, 22vw)',
+                  margin: '0',
+                  position: 'relative',
+                  zIndex: 10,
+                  pointerEvents: 'auto',
+                  touchAction: 'manipulation',
+                  color: '#ffffff',
+                  fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                    <User style={{ width: '32px', height: '32px', color: '#8B5CF6' }} />
                   </div>
-                </motion.button>
+                  <h3 style={{ fontSize: 'min(1.1rem, 1.6vw)', fontWeight: 900, marginBottom: '8px' }}>Manual Check-In</h3>
+                  <p style={{ fontSize: 'min(0.8rem, 1.2vw)', color: '#cccccc' }}>Enter credentials</p>
+                </div>
+              </button>
 
-                <motion.button
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  onClick={() => setState("chat")}
-                  className="group bg-white/5 backdrop-blur-xl border-2 border-white/20 hover:border-white/40 rounded-[20px] p-6 transition-all hover:bg-white/10 cursor-pointer"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <MessageCircle className="w-10 h-10 text-white" />
-                    </div>
-                    <h3 className="text-xl font-black mb-2">Chat Assistant</h3>
-                    <p className="text-sm text-white/60 font-medium">Ask any queries</p>
+              <button
+                type="button"
+                onClick={() => { setState("chat"); }}
+                onTouchEnd={(e) => { e.preventDefault(); setState("chat"); }}
+                style={{
+                  backgroundColor: 'rgba(30,41,59,0.95)',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '20px',
+                  padding: '24px 20px',
+                  cursor: 'pointer',
+                  width: 'min(240px, 22vw)',
+                  margin: '0',
+                  position: 'relative',
+                  zIndex: 10,
+                  pointerEvents: 'auto',
+                  touchAction: 'manipulation',
+                  color: '#ffffff',
+                  fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                    <MessageCircle style={{ width: '32px', height: '32px', color: '#ffffff' }} />
                   </div>
-                </motion.button>
-              </div>
+                  <h3 style={{ fontSize: 'min(1.1rem, 1.6vw)', fontWeight: 900, marginBottom: '8px' }}>Chat Assistant</h3>
+                  <p style={{ fontSize: 'min(0.8rem, 1.2vw)', color: '#cccccc' }}>Ask any queries</p>
+                </div>
+              </button>
             </div>
-          </motion.div>
-        )}
+          </div>
+        </div>
 
-        {/* ==================== FACE SCANNING ==================== */}
-        {state === "face-scanning" && (
-          <motion.div
-            key="face-scanning"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex flex-col items-center justify-center px-6 pt-16 pb-6"
-          >
-            <div className="w-full max-w-3xl h-full flex flex-col justify-center">
-              <div className="relative rounded-[24px] overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.3)] border border-white/10 flex-1 max-h-[calc(100vh-180px)]">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60"></div>
 
-                {/* Face alignment guide (always visible when camera active) */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-[280px] h-[360px] sm:w-[320px] sm:h-[420px] md:w-[360px] md:h-[460px] border-2 border-dashed border-white/30 rounded-[30px] relative">
-                    <div className="absolute -top-1 -left-1 w-16 h-16 border-t-4 border-l-4 border-[#22D3EE] rounded-tl-[30px]"></div>
-                    <div className="absolute -top-1 -right-1 w-16 h-16 border-t-4 border-r-4 border-[#22D3EE] rounded-tr-[30px]"></div>
-                    <div className="absolute -bottom-1 -left-1 w-16 h-16 border-b-4 border-l-4 border-[#22D3EE] rounded-bl-[30px]"></div>
-                    <div className="absolute -bottom-1 -right-1 w-16 h-16 border-b-4 border-r-4 border-[#22D3EE] rounded-br-[30px]"></div>
-                  </div>
-                </div>
+        <div className="absolute inset-0 z-[40] overflow-hidden flex flex-col" style={{ pointerEvents: state === 'menu' ? 'none' : 'auto', paddingBottom: (state !== 'chat' && state !== 'welcome') ? '3.5rem' : 0 }}>
+          <AnimatePresence mode="wait">
 
-                {isScanning && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <motion.div
-                      animate={{ opacity: [0.3, 0.6, 0.3] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `
-                          linear-gradient(0deg, transparent 24%, rgba(34, 211, 238, 0.1) 25%, rgba(34, 211, 238, 0.1) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, 0.1) 75%, rgba(34, 211, 238, 0.1) 76%, transparent 77%, transparent),
-                          linear-gradient(90deg, transparent 24%, rgba(34, 211, 238, 0.1) 25%, rgba(34, 211, 238, 0.1) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, 0.1) 75%, rgba(34, 211, 238, 0.1) 76%, transparent 77%, transparent)
-                        `,
-                        backgroundSize: '50px 50px'
-                      }}
-                    />
-                    <motion.div
-                      animate={{ y: ['-50%', '150%'] }}
-                      transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                      className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#22D3EE] to-transparent shadow-[0_0_20px_rgba(34,211,238,0.8)]"
-                    />
-                    <div className="w-[280px] h-[360px] sm:w-[320px] sm:h-[420px] md:w-[360px] md:h-[460px] border-2 border-[#22D3EE] rounded-[30px]"></div>
-                  </div>
-                )}
-
-                <div className="absolute top-4 right-4">
-                  <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl px-3 py-2 rounded-full border border-white/10">
-                    <div className={`w-2 h-2 rounded-full ${isScanning ? 'bg-[#22D3EE] animate-pulse' : 'bg-[#34D399]'}`}></div>
-                    <span className="text-xs font-bold">{isScanning ? `Scanning ${scanProgress}%` : 'Ready'}</span>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="text-2xl font-black text-center mb-2 drop-shadow-lg">
-                    {isScanning ? 'Identifying...' : 'Position Your Face'}
-                  </h2>
-                  <p className="text-base text-white/90 text-center font-medium drop-shadow-md">
-                    {isScanning ? 'Please hold still' : 'Align your face within the frame, then tap Start Scan'}
-                  </p>
-                  {scanMessage && !isScanning && (
-                    <p className="text-sm text-[#FB7185] text-center font-medium mt-2 drop-shadow-md">
-                      {scanMessage}
-                    </p>
-                  )}
-                  {!isScanning && (
-                    <div className="flex justify-center mt-4">
-                      <button
-                        onClick={handleFaceScan}
-                        className="px-8 py-3 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] rounded-full font-black text-white shadow-[0_0_30px_rgba(34,211,238,0.4)] hover:shadow-[0_0_50px_rgba(34,211,238,0.6)] transition-all flex items-center gap-2"
-                      >
-                        <Scan className="w-5 h-5" />
-                        Start Scan
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={handleReset}
-                  className="px-6 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-sm font-bold hover:bg-white/20 transition-all"
-                >
-                  ← Back to Menu
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==================== MANUAL CHECK-IN ==================== */}
-        {state === "manual-checkin" && (
-          <motion.div
-            key="manual-checkin"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex flex-col items-center justify-center px-6 pt-16 pb-6"
-          >
-            <div className="w-full max-w-xl">
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-8">
-                <h2 className="text-3xl font-black text-center mb-4 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent">
-                  Manual Check-In
-                </h2>
-                <p className="text-base text-white/80 text-center mb-6">Enter your credentials</p>
-
-                <div className="flex gap-3 mb-4">
-                  <button
-                    onClick={() => setManualMethod("email")}
-                    className={`flex-1 px-4 py-3 rounded-[12px] font-bold flex items-center justify-center gap-2 border-2 transition-all ${
-                      manualMethod === "email"
-                        ? "bg-[#22D3EE] border-[#22D3EE] text-white"
-                        : "bg-white/5 border-white/20 hover:border-[#22D3EE]"
-                    }`}
-                  >
-                    <Mail className="w-4 h-4" />
-                    EMAIL
-                  </button>
-                  <button
-                    onClick={() => setManualMethod("id")}
-                    className={`flex-1 px-4 py-3 rounded-[12px] font-bold flex items-center justify-center gap-2 border-2 transition-all ${
-                      manualMethod === "id"
-                        ? "bg-[#8B5CF6] border-[#8B5CF6] text-white"
-                        : "bg-white/5 border-white/20 hover:border-[#8B5CF6]"
-                    }`}
-                  >
-                    <Hash className="w-4 h-4" />
-                    ID
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  value={manualInput}
-                  onChange={(e) => { setManualInput(e.target.value); setManualError(null); }}
-                  onKeyPress={(e) => e.key === "Enter" && processManualCheckIn()}
-                  placeholder={manualMethod === "email" ? "Enter your email" : "Enter ID (FF2026-XXXXX)"}
-                  className="w-full px-4 py-3 rounded-[12px] bg-white/5 border-2 border-white/10 focus:border-[#22D3EE] focus:outline-none text-white placeholder-white/40 mb-4"
-                />
-
-                {manualError && (
-                  <p className="text-sm text-[#FB7185] text-center font-medium mb-4">
-                    {manualError}
-                  </p>
-                )}
-
-                <button
-                  onClick={processManualCheckIn}
-                  disabled={!manualInput.trim()}
-                  className="w-full px-6 py-3 rounded-[12px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] font-black flex items-center justify-center gap-2 disabled:opacity-50 mb-3"
-                >
-                  CHECK IN
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={handleReset}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-[10px] text-sm font-bold hover:bg-white/10 transition-all"
-                >
-                  ← Back
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==================== CHAT ==================== */}
-        {state === "chat" && (
-          <motion.div
-            key="chat"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex items-center justify-center pt-12 pb-4"
-          >
-            <div className="w-full h-full max-w-5xl grid grid-cols-2 gap-8 px-8">
-              
-              {/* LEFT: Avatar Display - Cinematic */}
-              <div className="flex flex-col h-full py-4 overflow-hidden">
+            {/* ==================== FACE SCANNING ==================== */}
+            {
+              state === "face-scanning" && (
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.1, type: "spring" }}
-                  className="relative flex-1 min-h-0"
+                  key="face-scanning"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full w-full min-h-0 flex flex-col items-stretch px-4 sm:px-6 pt-20 pb-6"
                 >
-                  {/* Avatar Frame with Dynamic Border */}
-                  <motion.div 
-                    className="relative w-full h-full rounded-[32px] overflow-hidden border-2"
-                    animate={{
-                      borderColor: isSpeaking 
-                        ? ["rgba(34, 211, 238, 0.3)", "rgba(34, 211, 238, 0.6)", "rgba(34, 211, 238, 0.3)"]
-                        : isListening
-                        ? ["rgba(139, 92, 246, 0.3)", "rgba(139, 92, 246, 0.6)", "rgba(139, 92, 246, 0.3)"]
-                        : "rgba(255, 255, 255, 0.1)",
-                      boxShadow: isSpeaking
-                        ? ["0 0 15px rgba(34, 211, 238, 0.1)", "0 0 25px rgba(34, 211, 238, 0.2)", "0 0 15px rgba(34, 211, 238, 0.1)"]
-                        : isListening
-                        ? ["0 0 15px rgba(139, 92, 246, 0.1)", "0 0 25px rgba(139, 92, 246, 0.2)", "0 0 15px rgba(139, 92, 246, 0.1)"]
-                        : "0 0 10px rgba(255, 255, 255, 0.05)"
-                    }}
-                    transition={{
-                      duration: isSpeaking || isListening ? 2 : 0.3,
-                      repeat: isSpeaking || isListening ? Infinity : 0,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    {heygenActive ? (
-                      <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
-                    ) : (
-                      <SmileyLoader />
-                    )}
-                    
-                    {/* Dynamic Gradient Overlay */}
-                    <motion.div 
-                      className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none"
-                      animate={{
-                        opacity: isSpeaking ? [0.8, 1, 0.8] : heygenActive ? 1 : 0
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: isSpeaking ? Infinity : 0
-                      }}
-                    />
-                    
-                    {/* Status Badge */}
-                    <div className="absolute top-6 right-6">
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="flex items-center gap-2 bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-full border shadow-lg"
+                  <div className="w-full h-full min-h-0 flex flex-col gap-3 flex-1">
+                    {/* Status badge: above video so it never overlaps the frame */}
+                    <div className="flex justify-center shrink-0">
+                      <div className="flex items-center bg-black/80 px-3 py-1.5 rounded-full border border-white/20">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${isScanning ? 'bg-[#22D3EE] animate-pulse' : 'bg-[#34D399]'}`} />
+                        <span className="text-xs font-bold text-white">{isScanning ? `Scanning ${scanProgress}%` : 'Ready'}</span>
+                      </div>
+                    </div>
+
+                    <div className="relative rounded-[20px] overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.3)] border border-white/10 flex-1 min-h-0 max-h-[calc(100vh-240px)]">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
+
+                      {/* Face alignment guide: centered, scales with card so it's not small/zoomed on wide screens */}
+                      <div
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[24px] border-2 border-dashed border-white/40 bg-transparent"
                         style={{
-                          borderColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "rgba(52, 211, 153, 0.5)"
+                          width: 'min(90%, 420px)',
+                          aspectRatio: '320 / 420',
+                          maxHeight: 'min(65vh, 85%)',
                         }}
                       >
-                        <motion.div
-                          animate={{ 
-                            scale: isSpeaking || isListening ? [1, 1.3, 1] : 1,
-                            backgroundColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "#34D399"
-                          }}
-                          transition={{ duration: 1, repeat: isSpeaking || isListening ? Infinity : 0 }}
-                          className="w-2.5 h-2.5 rounded-full"
-                        />
-                        <span className="text-xs font-black text-white tracking-wider">
-                          {isSpeaking ? "SPEAKING" : isListening ? "LISTENING" : "READY"}
-                        </span>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-
-                </motion.div>
-
-                {/* Sound Wave Visualization */}
-                <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0">
-                  {[...Array(9)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        height: isSpeaking 
-                          ? [4, 20, 4]
-                          : isListening
-                          ? [3, 12, 3]
-                          : [4, 8, 4],
-                        backgroundColor: isSpeaking
-                          ? ["#22D3EE", "#8B5CF6", "#22D3EE"]
-                          : isListening
-                          ? ["#8B5CF6", "#22D3EE", "#8B5CF6"]
-                          : ["#22D3EE", "#22D3EE", "#22D3EE"]
-                      }}
-                      transition={{
-                        duration: isSpeaking ? 0.6 : isListening ? 0.8 : 2,
-                        repeat: Infinity,
-                        delay: i * 0.1,
-                        ease: "easeInOut"
-                      }}
-                      className="w-1.5 rounded-full"
-                      style={{
-                        filter: `drop-shadow(0 0 ${isSpeaking ? 8 : isListening ? 6 : 4}px currentColor)`
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* RIGHT: Conversation & Controls */}
-              <div className="flex flex-col h-full py-4 overflow-hidden">
-                
-                {/* Conversation Display */}
-                <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex-1 min-h-0 mb-4 rounded-[32px] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-xl p-6 overflow-hidden flex flex-col relative z-0"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
-                    <h3 className="text-sm font-black text-white/70 uppercase tracking-wider">Conversation</h3>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-[#22D3EE]' : isListening ? 'bg-[#8B5CF6]' : 'bg-white/30'}`}></div>
-                      <span className="text-xs font-mono text-white/50">
-                        {conversation.length} {conversation.length === 1 ? 'message' : 'messages'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Messages */}
-                  <div ref={chatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                    {conversation.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#22D3EE]/20 to-[#8B5CF6]/20 flex items-center justify-center mb-4">
-                          <MessageCircle className="w-8 h-8 text-white/40" />
-                        </div>
-                        <p className="text-white/60 text-sm font-medium mb-2">Start a conversation</p>
-                        <p className="text-white/40 text-xs">Tap the microphone to speak</p>
+                        <div className="absolute -top-0.5 -left-0.5 w-12 h-12 border-t-4 border-l-4 border-[#22D3EE] rounded-tl-[24px]" />
+                        <div className="absolute -top-0.5 -right-0.5 w-12 h-12 border-t-4 border-r-4 border-[#22D3EE] rounded-tr-[24px]" />
+                        <div className="absolute -bottom-0.5 -left-0.5 w-12 h-12 border-b-4 border-l-4 border-[#22D3EE] rounded-bl-[24px]" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-12 h-12 border-b-4 border-r-4 border-[#22D3EE] rounded-br-[24px]" />
                       </div>
-                    ) : (
-                      conversation.map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] rounded-[20px] px-4 py-3 ${
-                            msg.type === 'user'
-                              ? 'bg-gradient-to-r from-[#8B5CF6] to-[#A78BFA] text-white'
-                              : 'bg-white/10 border border-white/20 text-white/90'
-                          }`}>
-                            <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-                              <ReactMarkdown>{msg.text}</ReactMarkdown>
-                            </div>
-                            <p className="text-[10px] mt-1 opacity-60">
-                              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))
-                    )}
 
-                    {/* Typing Indicator */}
-                    {isSpeaking && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex justify-start"
-                      >
-                        <div className="bg-white/10 border border-white/20 rounded-[20px] px-4 py-3">
-                          <div className="flex gap-1">
-                            {[0, 1, 2].map((i) => (
-                              <motion.div
-                                key={i}
-                                animate={{ opacity: [0.3, 1, 0.3] }}
-                                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                                className="w-2 h-2 rounded-full bg-[#22D3EE]"
-                              />
-                            ))}
-                          </div>
+                      {isScanning && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <motion.div
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage: `
+                              linear-gradient(0deg, transparent 24%, rgba(34, 211, 238, 0.1) 25%, rgba(34, 211, 238, 0.1) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, 0.1) 75%, rgba(34, 211, 238, 0.1) 76%, transparent 77%, transparent),
+                              linear-gradient(90deg, transparent 24%, rgba(34, 211, 238, 0.1) 25%, rgba(34, 211, 238, 0.1) 26%, transparent 27%, transparent 74%, rgba(34, 211, 238, 0.1) 75%, rgba(34, 211, 238, 0.1) 76%, transparent 77%, transparent)
+                            `,
+                              backgroundSize: '50px 50px'
+                            }}
+                          />
+                          {/* Scanning border: same position/size as alignment guide */}
+                          <div
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[24px] border-2 border-[#22D3EE] shadow-[0_0_20px_rgba(34,211,238,0.5)] bg-transparent"
+                            style={{
+                              width: 'min(90%, 420px)',
+                              aspectRatio: '320 / 420',
+                              maxHeight: 'min(65vh, 85%)',
+                            }}
+                          />
+                          <motion.div
+                            animate={{ y: ['-50%', '150%'] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-transparent via-[#22D3EE] to-transparent shadow-[0_0_20px_rgba(34,211,238,0.8)]"
+                          />
                         </div>
-                      </motion.div>
-                    )}
-                  </div>
-                </motion.div>
+                      )}
 
-                {/* Quick Suggestions */}
-                <div className="mb-4 flex-shrink-0 relative z-30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { icon: Calendar, label: "Event Schedule" },
-                      { icon: MapPin, label: "Venue Map" },
-                      { icon: User, label: "Speakers" },
-                      { icon: Navigation, label: "WiFi Details" }
-                    ].map((item, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => sendGeneralMessage(item.label)}
-                        className="flex items-center gap-2 px-3 py-2.5 bg-white/5 border border-white/20 rounded-[14px] text-xs font-bold text-white/80 hover:bg-white/10 hover:scale-[1.02] transition-all cursor-pointer"
-                      >
-                        <item.icon className="w-3.5 h-3.5" />
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Control Buttons */}
-                <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="flex items-center gap-3 flex-shrink-0 relative z-20"
-                >
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      heygenService.interruptAvatar();
-                      setIsSpeaking(false);
-                      if (isListening) {
-                        const finalText = voiceService.stopListening();
-                        setIsListening(false);
-                        setVoiceTranscript("");
-                        if (finalText.trim()) {
-                          sendGeneralMessage(finalText.trim());
-                        }
-                      } else {
-                        setIsListening(true);
-                        setVoiceTranscript("");
-                        voiceService.startListening({
-                          onPartial: (text) => setVoiceTranscript(text),
-                          onCommitted: (text) => {
-                            setVoiceTranscript("");
-                            voiceService.stopListening();
-                            setIsListening(false);
-                            if (text.trim()) {
-                              sendGeneralMessage(text.trim());
-                            }
-                          },
-                          onError: () => { setIsListening(false); setVoiceTranscript(""); },
-                          onStateChange: (listening) => setIsListening(listening),
-                        });
-                      }
-                    }}
-                    className="flex-1 h-16 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
-                  >
-                    {isListening && (
-                      <motion.div
-                        className="absolute inset-0 bg-white/20"
-                        animate={{ opacity: [0.1, 0.3, 0.1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                    )}
-                    <Mic className={`w-6 h-6 ${isListening ? 'animate-pulse' : ''}`} />
-                    <span className="relative z-10">{isListening ? "LISTENING..." : "TAP TO SPEAK"}</span>
-                  </motion.button>
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleReset}
-                    className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#DC2626] to-[#B91C1C] border-2 border-white/10 flex items-center justify-center hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
-                  >
-                    <X className="w-6 h-6" />
-                  </motion.button>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==================== WELCOME - AVATAR INTERFACE ==================== */}
-        {state === "welcome" && userData && (
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex items-center justify-center pt-12 pb-4"
-          >
-            <div className="w-full h-full max-w-5xl grid grid-cols-2 gap-8 px-8">
-              
-              {/* LEFT: Avatar Display - Cinematic */}
-              <div className="flex flex-col h-full py-4 overflow-hidden">
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.1, type: "spring" }}
-                  className="relative flex-1 min-h-0"
-                >
-                  {/* Avatar Frame with Success Glow */}
-                  <motion.div 
-                    className="relative w-full h-full rounded-[32px] overflow-hidden border-2 border-[#34D399]/40"
-                    animate={{
-                      boxShadow: ["0 0 20px rgba(52, 211, 153, 0.1)", "0 0 30px rgba(52, 211, 153, 0.2)", "0 0 20px rgba(52, 211, 153, 0.1)"]
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    {heygenActive ? (
-                      <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
-                    ) : (
-                      <SmileyLoader />
-                    )}
-                    
-                    {/* Dynamic Gradient Overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none ${heygenActive ? '' : 'opacity-0'}`} />
-                    
-                    {/* Success Badge */}
-                    <div className="absolute top-6 right-6">
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.5, type: "spring" }}
-                        className="flex items-center gap-2 bg-black/80 backdrop-blur-xl px-4 py-2.5 rounded-full border border-[#34D399] shadow-lg"
-                      >
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="w-2.5 h-2.5 rounded-full bg-[#34D399]"
-                        />
-                        <span className="text-xs font-black text-[#34D399] tracking-wider">CHECKED IN</span>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-
-                </motion.div>
-
-                {/* Sound Wave Visualization - Success Theme */}
-                <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0">
-                  {[...Array(9)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        height: [4, 16, 4],
-                        backgroundColor: ["#34D399", "#22D3EE", "#34D399"]
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        delay: i * 0.1,
-                        ease: "easeInOut"
-                      }}
-                      className="w-1.5 rounded-full"
-                      style={{
-                        filter: "drop-shadow(0 0 6px currentColor)"
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* RIGHT: Conversation & Controls */}
-              <div className="flex flex-col py-4 h-full overflow-hidden">
-                
-                {/* Greeting Header */}
-                <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="mb-4 flex-shrink-0"
-                >
-                  <h3 className="text-3xl font-black bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] bg-clip-text text-transparent mb-1">
-                    {(() => {
-                      const hour = new Date().getHours();
-                      return hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-                    })()}, {userData.fullName.split(" ")[0]}!
-                  </h3>
-                  <p className="text-white/50 text-xs font-medium">
-                    Welcome to FutureFin Expo 2026 • Check-in successful
-                  </p>
-                </motion.div>
-
-                {/* Conversation Panel */}
-                <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="flex-1 min-h-0 mb-4 rounded-[32px] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-xl overflow-hidden flex flex-col relative z-0"
-                >
-                  {/* Conversation Header */}
-                  <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse"></div>
-                      <h4 className="text-sm font-black text-white/70 uppercase tracking-wider">Live Conversation</h4>
-                    </div>
-                    <span className="text-xs font-mono text-white/50">
-                      {welcomeConversation.length} {welcomeConversation.length === 1 ? 'message' : 'messages'}
-                    </span>
-                  </div>
-
-                  {/* Messages Area */}
-                  <div ref={welcomeScrollRef} className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
-                    {welcomeConversation.map((msg, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.3 }}
-                        className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[85%] rounded-[24px] px-5 py-3.5 backdrop-blur-sm ${
-                          msg.type === 'user'
-                            ? 'bg-gradient-to-r from-[#8B5CF6] to-[#A78BFA] text-white'
-                            : 'bg-gradient-to-br from-white/10 to-white/5 border border-white/20'
-                        }`}>
-                          <div className="text-sm leading-relaxed text-white/90 mb-2 prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-                            <ReactMarkdown>{msg.text}</ReactMarkdown>
-                          </div>
-                          <p className="text-[10px] text-white/40 font-mono">
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="absolute bottom-0 left-0 right-0 p-4 z-[60] pointer-events-auto">
+                        <h2 className="text-xl font-black text-center mb-1 drop-shadow-lg">
+                          {isScanning ? 'Identifying...' : 'Position Your Face'}
+                        </h2>
+                        <p className="text-sm text-white/90 text-center font-medium drop-shadow-md">
+                          {isScanning ? 'Please hold still' : 'Align your face within the frame, then tap Start Scan'}
+                        </p>
+                        {scanMessage && !isScanning && (
+                          <p className="text-xs text-[#FB7185] text-center font-medium mt-1 drop-shadow-md">
+                            {scanMessage}
                           </p>
-                        </div>
-                      </motion.div>
-                    ))}
+                        )}
+                        {!isScanning && (
+                          <div className="flex justify-center mt-2">
+                            <button
+                              type="button"
+                              onClick={handleFaceScan}
+                              onTouchEnd={(e) => { e.preventDefault(); handleFaceScan(); }}
+                              className="px-6 py-2.5 bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] rounded-full font-black text-white text-sm shadow-[0_0_30px_rgba(34,211,238,0.4)] hover:shadow-[0_0_50px_rgba(34,211,238,0.6)] transition-all flex items-center cursor-pointer pointer-events-auto"
+                              style={{ touchAction: 'manipulation' }}
+                            >
+                              <Scan className="w-4 h-4 mr-2" />
+                              Start Scan
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Typing Indicator */}
-                    {isSpeaking && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex justify-start"
+                    <div className="flex justify-center shrink-0 -mt-1 mb-0 relative z-[70] pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        onTouchEnd={(e) => { e.preventDefault(); handleReset(); }}
+                        className="px-4 py-1.5 bg-[#1e293b] border border-white/20 rounded-full text-xs font-bold hover:bg-white/20 transition-all cursor-pointer"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.1)', touchAction: 'manipulation' }}
                       >
-                        <div className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 backdrop-blur-sm rounded-[24px] px-5 py-3.5">
-                          <div className="flex gap-1.5">
-                            {[0, 1, 2].map((i) => (
+                        ← Back to Menu
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            }
+
+            {/* ==================== MANUAL CHECK-IN ==================== */}
+            {
+              state === "manual-checkin" && (
+                <motion.div
+                  key="manual-checkin"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full w-full flex flex-col items-center justify-center px-6 pt-14 pb-4 relative z-10"
+                >
+                  <div className="w-full max-w-2xl relative z-20">
+                    <div className="bg-[#1e293b] border border-white/10 rounded-[24px] p-5" style={{ backgroundColor: 'rgba(30,41,59,0.95)' }}>
+                      <h2 className="text-2xl font-black text-center mb-4 text-[#22D3EE]">
+                        Manual Check-In
+                      </h2>
+                      <p className="text-base text-white/80 text-center mb-6">Enter your credentials</p>
+
+                      <div className="flex mb-4">
+                        <button
+                          onClick={() => setManualMethod("email")}
+                          className={`flex-1 px-4 py-2 rounded-[12px] font-bold flex items-center justify-center border-2 transition-all mr-3 ${manualMethod === "email"
+                            ? "bg-[#22D3EE] border-[#22D3EE] text-white"
+                            : "bg-white/5 border-white/20 hover:border-[#22D3EE]"
+                            }`}
+                        >
+                          <Mail className="w-4 h-4 mr-2" />
+                          EMAIL
+                        </button>
+                        <button
+                          onClick={() => setManualMethod("id")}
+                          className={`flex-1 px-4 py-2 rounded-[12px] font-bold flex items-center justify-center border-2 transition-all ${manualMethod === "id"
+                            ? "bg-[#8B5CF6] border-[#8B5CF6] text-white"
+                            : "bg-white/5 border-white/20 hover:border-[#8B5CF6]"
+                            }`}
+                        >
+                          <Hash className="w-4 h-4 mr-2" />
+                          ID
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={manualInput}
+                        onChange={(e) => { setManualInput(e.target.value); setManualError(null); }}
+                        onKeyPress={(e) => e.key === "Enter" && processManualCheckIn()}
+                        placeholder={manualMethod === "email" ? "Enter your email" : "Enter ID (FF2026-XXXXX)"}
+                        className="w-full px-4 py-2 rounded-[12px] bg-white/5 border-2 border-white/10 focus:border-[#22D3EE] focus:outline-none text-white placeholder-white/40 mb-4"
+                      />
+
+                      {manualError && (
+                        <p className="text-sm text-[#FB7185] text-center font-medium mb-4">
+                          {manualError}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={processManualCheckIn}
+                        disabled={!manualInput.trim()}
+                        className="w-full px-6 py-2 rounded-[12px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] font-black flex items-center justify-center gap-2 disabled:opacity-50 mb-3"
+                      >
+                        CHECK IN
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+
+                      <button
+                        onClick={handleReset}
+                        className="w-full px-4 py-1.5 bg-white/5 border border-white/20 rounded-[10px] text-sm font-bold hover:bg-white/10 transition-all"
+                      >
+                        ← Back
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            }
+
+            {/* ==================== CHAT ==================== */}
+            {
+              state === "chat" && (
+                <motion.div
+                  key="chat"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full w-full flex items-center justify-center pt-14 pb-3"
+                >
+                  <div className="w-full h-full max-w-[1400px] flex flex-col lg:flex-row px-6 md:px-12">
+                    <div className="w-full lg:w-1/2 lg:pr-6 h-[45%] lg:h-full flex flex-col min-h-0">
+                      {/* LEFT: Avatar Display - Cinematic */}
+                      <div className="flex flex-col h-full py-2 lg:py-4 overflow-hidden relative">
+                        <motion.div
+                          initial={{ opacity: 1 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.1, type: "spring" }}
+                          className="relative flex-1 min-h-0"
+                        >
+                          {/* Avatar Frame with Dynamic Border */}
+                          <motion.div
+                            className="relative w-full h-full rounded-[32px] overflow-hidden border-2"
+                            animate={{
+                              borderColor: isSpeaking
+                                ? ["rgba(34, 211, 238, 0.3)", "rgba(34, 211, 238, 0.6)", "rgba(34, 211, 238, 0.3)"]
+                                : isListening
+                                  ? ["rgba(139, 92, 246, 0.3)", "rgba(139, 92, 246, 0.6)", "rgba(139, 92, 246, 0.3)"]
+                                  : "rgba(255, 255, 255, 0.1)",
+                              boxShadow: isSpeaking
+                                ? ["0 0 15px rgba(34, 211, 238, 0.1)", "0 0 25px rgba(34, 211, 238, 0.2)", "0 0 15px rgba(34, 211, 238, 0.1)"]
+                                : isListening
+                                  ? ["0 0 15px rgba(139, 92, 246, 0.1)", "0 0 25px rgba(139, 92, 246, 0.2)", "0 0 15px rgba(139, 92, 246, 0.1)"]
+                                  : "0 0 10px rgba(255, 255, 255, 0.05)"
+                            }}
+                            transition={{
+                              duration: isSpeaking || isListening ? 2 : 0.3,
+                              repeat: isSpeaking || isListening ? Infinity : 0,
+                              ease: "easeInOut"
+                            }}
+                          >
+                            {heygenActive ? (
+                              <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
+                            ) : (
+                              <SmileyLoader />
+                            )}
+
+                            {/* Dynamic Gradient Overlay */}
+                            <motion.div
+                              className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none"
+                              animate={{
+                                opacity: isSpeaking ? [0.8, 1, 0.8] : heygenActive ? 1 : 0
+                              }}
+                              transition={{
+                                duration: 2,
+                                repeat: isSpeaking ? Infinity : 0
+                              }}
+                            />
+
+                            {/* Status Badge */}
+                            <div className="absolute top-6 right-6">
                               <motion.div
-                                key={i}
-                                animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.2, 1] }}
-                                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                                className="w-2 h-2 rounded-full bg-[#34D399]"
-                              />
-                            ))}
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="flex items-center bg-black/90 px-4 py-2.5 rounded-full border shadow-lg"
+                                style={{
+                                  borderColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "rgba(52, 211, 153, 0.5)"
+                                }}
+                              >
+                                <motion.div
+                                  animate={{
+                                    scale: isSpeaking || isListening ? [1, 1.3, 1] : 1,
+                                    backgroundColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "#34D399"
+                                  }}
+                                  transition={{ duration: 1, repeat: isSpeaking || isListening ? Infinity : 0 }}
+                                  className="w-2.5 h-2.5 rounded-full mr-2"
+                                />
+                                <span className="text-xs font-black text-white tracking-wider">
+                                  {isSpeaking ? "SPEAKING" : isListening ? "LISTENING" : "READY"}
+                                </span>
+                              </motion.div>
+                            </div>
+                          </motion.div>
+
+                        </motion.div>
+
+                        {/* Sound Wave Visualization */}
+                        <div className="flex items-center justify-center mt-3 flex-shrink-0">
+                          {[...Array(9)].map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="w-1.5 rounded-full mx-[3px]"
+                              animate={{
+                                height: isSpeaking
+                                  ? [3, 14, 3]
+                                  : isListening
+                                    ? [3, 12, 3]
+                                    : [4, 8, 4],
+                                backgroundColor: isSpeaking
+                                  ? ["#22D3EE", "#8B5CF6", "#22D3EE"]
+                                  : isListening
+                                    ? ["#8B5CF6", "#22D3EE", "#8B5CF6"]
+                                    : ["#22D3EE", "#22D3EE", "#22D3EE"]
+                              }}
+                              transition={{
+                                duration: isSpeaking ? 0.6 : isListening ? 0.8 : 2,
+                                repeat: Infinity,
+                                delay: i * 0.1,
+                                ease: "easeInOut"
+                              }}
+                              style={{
+                                filter: `drop-shadow(0 0 ${isSpeaking ? 8 : isListening ? 6 : 4}px currentColor)`
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT: Conversation & Controls */}
+                    <div className="w-full lg:w-1/2 lg:pl-6 flex flex-col pt-4 h-1/2 lg:h-full overflow-hidden">
+
+                      {/* Conversation Display */}
+                      <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="flex-1 min-h-0 mb-4 rounded-[32px] bg-[#1e293b]/95 border border-white/10 p-3 overflow-hidden flex flex-col relative z-0"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/10">
+                          <h3 className="text-sm font-black text-white/70 uppercase tracking-wider">Conversation</h3>
+                          <div className="flex items-center">
+                            <div className={`w-1.5 h-1.5 rounded-full mr-2 ${isSpeaking ? 'bg-[#22D3EE]' : isListening ? 'bg-[#8B5CF6]' : 'bg-white/30'}`}></div>
+                            <span className="text-xs font-mono text-white/50">
+                              {conversation.length} {conversation.length === 1 ? 'message' : 'messages'}
+                            </span>
                           </div>
                         </div>
-                      </motion.div>
-                    )}
 
-                    {/* Empty State */}
-                    {welcomeConversation.length === 0 && !isSpeaking && (
-                      <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#34D399]/20 to-[#22D3EE]/20 border border-white/10 flex items-center justify-center mb-4">
-                          <Mic className="w-7 h-7 text-[#34D399]" />
+                        {/* Messages */}
+                        <div ref={chatScrollRef} className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                          {conversation.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#22D3EE]/20 to-[#8B5CF6]/20 flex items-center justify-center mb-4">
+                                <MessageCircle className="w-8 h-8 text-white/40" />
+                              </div>
+                              <p className="text-white/60 text-sm font-medium mb-2">Start a conversation</p>
+                              <p className="text-white/40 text-xs">Tap the microphone to speak</p>
+                            </div>
+                          ) : (
+                            conversation.map((msg, idx) => (
+                              <motion.div
+                                key={idx}
+                                initial={{ opacity: 1 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div className={`max-w-[80%] rounded-[20px] px-4 py-3 ${msg.type === 'user'
+                                  ? 'bg-gradient-to-r from-[#8B5CF6] to-[#A78BFA] text-white'
+                                  : 'bg-white/10 border border-white/20 text-white/90'
+                                  }`}>
+                                  <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                  </div>
+                                  <p className="text-[10px] mt-1 opacity-60">
+                                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            ))
+                          )}
+
+                          {/* Typing Indicator */}
+                          {isSpeaking && (
+                            <motion.div
+                              initial={{ opacity: 1 }}
+                              animate={{ opacity: 1 }}
+                              className="flex justify-start"
+                            >
+                              <div className="bg-white/10 border border-white/20 rounded-[20px] px-4 py-3">
+                                <div className="flex">
+                                  {[0, 1, 2].map((i) => (
+                                    <motion.div
+                                      key={i}
+                                      animate={{ opacity: [0.3, 1, 0.3] }}
+                                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                                      className="w-2 h-2 rounded-full bg-[#22D3EE] mx-[2px]"
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
-                        <p className="text-white/60 text-sm font-medium mb-1">AI Assistant is ready</p>
-                        <p className="text-white/40 text-xs">Tap to speak below to start the conversation</p>
+                      </motion.div>
+
+                      {/* Quick Suggestions */}
+                      <div className="mb-2 flex-shrink-0 relative z-30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { icon: Calendar, label: "Event Schedule" },
+                            { icon: MapPin, label: "Venue Map" },
+                            { icon: User, label: "Speakers" },
+                            { icon: Navigation, label: "WiFi Details" }
+                          ].map((item, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => sendGeneralMessage(item.label)}
+                              className="flex items-center px-3 py-1.5 bg-white/5 border border-white/20 rounded-[14px] text-xs font-bold text-white/80 hover:bg-white/10 hover:scale-[1.02] transition-all cursor-pointer m-1"
+                            >
+                              <item.icon className="w-3.5 h-3.5 mr-2" />
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
 
-                {/* Quick Suggestions */}
-                <div className="mb-4 flex-shrink-0 relative z-30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { icon: Navigation, label: "Where is my hall?" },
-                      { icon: Calendar, label: "My event schedule" },
-                      { icon: MapPin, label: "Where do I find parking?" },
-                      { icon: User, label: "WiFi Details" }
-                    ].map((item, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => sendWelcomeMessage(item.label)}
-                        className="flex items-center gap-2 px-3 py-2.5 bg-white/5 border border-white/20 rounded-[14px] text-xs font-bold text-white/80 hover:bg-white/10 hover:scale-[1.02] transition-all cursor-pointer"
-                      >
-                        <item.icon className="w-3.5 h-3.5" />
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Control Buttons */}
-                <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="flex items-center gap-3 flex-shrink-0 relative z-20"
-                >
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      heygenService.interruptAvatar();
-                      setIsSpeaking(false);
-                      if (isListening) {
-                        const finalText = voiceService.stopListening();
-                        setIsListening(false);
-                        setVoiceTranscript("");
-                        if (finalText.trim()) {
-                          sendWelcomeMessage(finalText.trim());
-                        }
-                      } else {
-                        setIsListening(true);
-                        setVoiceTranscript("");
-                        voiceService.startListening({
-                          onPartial: (text) => setVoiceTranscript(text),
-                          onCommitted: (text) => {
-                            setVoiceTranscript("");
-                            voiceService.stopListening();
-                            setIsListening(false);
-                            if (text.trim()) {
-                              sendWelcomeMessage(text.trim());
-                            }
-                          },
-                          onError: () => { setIsListening(false); setVoiceTranscript(""); },
-                          onStateChange: (listening) => setIsListening(listening),
-                        });
-                      }
-                    }}
-                    className="flex-1 h-16 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
-                  >
-                    {isListening && (
+                      {/* Control Buttons */}
                       <motion.div
-                        className="absolute inset-0 bg-white/20"
-                        animate={{ opacity: [0.1, 0.3, 0.1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                    )}
-                    <Mic className={`w-6 h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
-                    <span className="relative z-10">
-                      {isListening ? "LISTENING..." : isSpeaking ? "SPEAKING..." : "TAP TO SPEAK"}
-                    </span>
-                  </motion.button>
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleReset}
-                    className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#DC2626] to-[#B91C1C] border-2 border-white/10 flex items-center justify-center hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
-                  >
-                    <X className="w-6 h-6" />
-                  </motion.button>
+                        initial={{ opacity: 1 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="flex items-center gap-3 flex-shrink-0 relative z-20"
+                      >
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            heygenService.interruptAvatar();
+                            setIsSpeaking(false);
+                            if (isListening) {
+                              const finalText = voiceService.stopListening();
+                              setIsListening(false);
+                              setVoiceTranscript("");
+                              if (finalText.trim()) {
+                                sendGeneralMessage(finalText.trim());
+                              }
+                            } else {
+                              setIsListening(true);
+                              setVoiceTranscript("");
+                              voiceService.startListening({
+                                onPartial: (text) => setVoiceTranscript(text),
+                                onCommitted: (text) => {
+                                  setVoiceTranscript("");
+                                  voiceService.stopListening();
+                                  setIsListening(false);
+                                  if (text.trim()) {
+                                    sendGeneralMessage(text.trim());
+                                  }
+                                },
+                                onError: () => { setIsListening(false); setVoiceTranscript(""); },
+                                onStateChange: (listening) => setIsListening(listening),
+                              });
+                            }
+                          }}
+                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
+                        >
+                          {isListening && (
+                            <motion.div
+                              className="absolute inset-0 bg-white/20"
+                              animate={{ opacity: [0.1, 0.3, 0.1] }}
+                              transition={{ duration: 1.5, repeat: Infinity }}
+                            />
+                          )}
+                          <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
+                          <span className="relative z-10">{isListening ? "LISTENING..." : "TAP TO SPEAK"}</span>
+                        </motion.button>
+
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleReset}
+                          className="w-11 h-11 rounded-[20px] bg-gradient-to-br from-[#DC2626] to-[#B91C1C] border-2 border-white/10 flex items-center justify-center hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
+                        >
+                          <X className="w-5 h-5" />
+                        </motion.button>
+                      </motion.div>
+                    </div>
+                  </div>
                 </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        {/* ==================== FACE NOT RECOGNIZED ==================== */}
-        {state === "face-not-recognized" && (
-          <motion.div
-            key="face-not-recognized"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-full w-full flex flex-col items-center justify-center px-6 pt-16 pb-6"
-          >
-            <div className="w-full max-w-xl">
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-8 text-center">
-                <div className="w-20 h-20 rounded-full bg-[#FB7185]/20 flex items-center justify-center mx-auto mb-6">
-                  <X className="w-10 h-10 text-[#FB7185]" />
-                </div>
-                <h2 className="text-3xl font-black mb-3 text-white">
-                  Face Not Recognized
-                </h2>
-                <p className="text-base text-white/70 mb-8">
-                  We couldn't match your face. Please try again or use manual check-in.
-                </p>
+              )
+            }
 
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => { setScanMessage(null); setState("face-scanning"); }}
-                    className="w-full px-6 py-4 rounded-[14px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] font-black text-white flex items-center justify-center gap-2"
-                  >
-                    <Scan className="w-5 h-5" />
-                    Try Again
-                  </button>
-                  <button
-                    onClick={() => setState("manual-checkin")}
-                    className="w-full px-6 py-4 rounded-[14px] bg-white/10 border border-white/20 font-black text-white flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
-                  >
-                    <User className="w-5 h-5" />
-                    Manual Check-In
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-[10px] text-sm font-bold hover:bg-white/10 transition-all"
-                  >
-                    ← Back to Menu
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {/* ==================== WELCOME - AVATAR INTERFACE ==================== */}
+            {
+              state === "welcome" && userData && (
+                <motion.div
+                  key="welcome"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full w-full flex items-center justify-center pt-14 pb-3"
+                >
+                  <div className="w-full h-full max-w-[1400px] flex flex-col lg:flex-row px-6 md:px-12">
+                    <div className="w-full lg:w-1/2 lg:pr-6 h-[40%] lg:h-full flex flex-col min-h-0">
+                      {/* LEFT: Avatar Display - Cinematic */}
+                      <div className="flex flex-col h-full py-2 lg:py-4 overflow-hidden relative">
+                        <motion.div
+                          initial={{ opacity: 1 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.1, type: "spring" }}
+                          className="relative flex-1 min-h-0"
+                        >
+                          {/* Avatar Frame with Success Glow */}
+                          <motion.div
+                            className="relative w-full h-full rounded-[32px] overflow-hidden border-2 border-[#34D399]/40"
+                            animate={{
+                              boxShadow: ["0 0 20px rgba(52, 211, 153, 0.1)", "0 0 30px rgba(52, 211, 153, 0.2)", "0 0 20px rgba(52, 211, 153, 0.1)"]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                          >
+                            {heygenActive ? (
+                              <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
+                            ) : (
+                              <SmileyLoader />
+                            )}
 
-      {/* Footer - hidden during chat/welcome to avoid overlapping controls */}
-      {state !== "chat" && state !== "welcome" && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-sm py-2.5">
-          <div className="flex items-center justify-center gap-2.5">
-            <span className="text-[9px] text-gray-400 font-medium tracking-wider uppercase">Powered by</span>
-            <a href="https://technocit.com/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity">
-              <img src="/images/tcit_logo.svg" alt="TechnoCIT" className="h-5 object-contain" />
-            </a>
-            <span className="text-[9px] text-gray-300">&</span>
-            <a href="https://www.nfs.ae/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity">
-              <img src="/images/nfs_logo.png" alt="NFS Technologies" className="h-5 object-contain" />
-            </a>
-          </div>
+                            {/* Dynamic Gradient Overlay */}
+                            <div className={`absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none ${heygenActive ? '' : 'opacity-0'}`} />
+
+                            {/* Success Badge */}
+                            <div className="absolute top-6 right-6">
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.5, type: "spring" }}
+                                className="flex items-center bg-black/90 px-4 py-2.5 rounded-full border border-[#34D399] shadow-lg"
+                              >
+                                <motion.div
+                                  animate={{ scale: [1, 1.2, 1] }}
+                                  transition={{ duration: 2, repeat: Infinity }}
+                                  className="w-2.5 h-2.5 rounded-full bg-[#34D399] mr-2"
+                                />
+                                <span className="text-xs font-black text-[#34D399] tracking-wider">CHECKED IN</span>
+                              </motion.div>
+                            </div>
+                          </motion.div>
+
+                        </motion.div>
+
+                        {/* Sound Wave Visualization - Success Theme */}
+                        <div className="flex items-center justify-center mt-3 flex-shrink-0">
+                          {[...Array(9)].map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="w-1.5 rounded-full mx-[3px]"
+                              animate={{
+                                height: [4, 16, 4],
+                                backgroundColor: ["#34D399", "#22D3EE", "#34D399"]
+                              }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                delay: i * 0.1,
+                                ease: "easeInOut"
+                              }}
+                              style={{
+                                filter: "drop-shadow(0 0 6px currentColor)"
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT: Conversation & Controls */}
+                    <div className="w-full lg:w-1/2 lg:pl-6 flex flex-col pt-4 h-1/2 lg:h-full overflow-hidden">
+
+                      {/* Greeting Header */}
+                      <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: 1 }}
+                        className="mb-2 flex-shrink-0"
+                      >
+                        <h3 className="text-xl font-black text-[#22D3EE] mb-1 leading-tight">
+                          {(() => {
+                            const hour = new Date().getHours();
+                            return hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+                          })()}, {userData.fullName.split(" ")[0]}!
+                        </h3>
+                        <p className="text-[#ffffff] opacity-60 text-sm font-medium">
+                          Welcome to FutureFin Expo 2026 • Check-in successful
+                        </p>
+                      </motion.div>
+
+                      {/* Conversation Panel */}
+                      <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex-1 min-h-0 mb-4 rounded-[32px] bg-[#1e293b] border border-white/10 overflow-hidden flex flex-col relative z-10"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                      >
+                        {/* Conversation Header */}
+                        <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse mr-3"></div>
+                            <h4 className="text-sm font-black text-white/70 uppercase tracking-wider">Live Conversation</h4>
+                          </div>
+                          <span className="text-xs font-mono text-white/50">
+                            {welcomeConversation.length} {welcomeConversation.length === 1 ? 'message' : 'messages'}
+                          </span>
+                        </div>
+
+                        {/* Messages Area */}
+                        <div ref={welcomeScrollRef} className="flex-1 p-3 overflow-y-auto space-y-2 custom-scrollbar">
+                          {welcomeConversation.map((msg, idx) => (
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 1 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.3 }}
+                              className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div className={`max-w-[85%] rounded-[24px] px-5 py-3.5 ${msg.type === 'user'
+                                ? 'bg-gradient-to-r from-[#8B5CF6] to-[#A78BFA] text-white'
+                                : 'bg-[#1e293b]/80 border border-white/20'
+                                }`}>
+                                <div className="text-sm leading-relaxed text-white/90 mb-2 prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                </div>
+                                <p className="text-[10px] text-white/40 font-mono">
+                                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+
+                          {/* Typing Indicator */}
+                          {isSpeaking && (
+                            <motion.div
+                              initial={{ opacity: 1 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex justify-start"
+                            >
+                              <div className="bg-white/10 border border-white/20 rounded-[24px] px-5 py-3.5">
+                                <div className="flex">
+                                  {[0, 1, 2].map((i) => (
+                                    <motion.div
+                                      key={i}
+                                      animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.2, 1] }}
+                                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                                      className="w-2 h-2 rounded-full bg-[#34D399] mx-[3px]"
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Empty State */}
+                          {welcomeConversation.length === 0 && !isSpeaking && (
+                            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#34D399]/20 to-[#22D3EE]/20 border border-white/10 flex items-center justify-center mb-4">
+                                <Mic className="w-7 h-7 text-[#34D399]" />
+                              </div>
+                              <p className="text-white/60 text-sm font-medium mb-1">AI Assistant is ready</p>
+                              <p className="text-white/40 text-xs">Tap to speak below to start the conversation</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+
+                      {/* Quick Suggestions */}
+                      <div className="mb-2 flex-shrink-0 relative z-50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
+                          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { icon: Navigation, label: "Where is my hall?" },
+                            { icon: Calendar, label: "My event schedule" },
+                            { icon: MapPin, label: "Where do I find parking?" },
+                            { icon: User, label: "WiFi Details" }
+                          ].map((item, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => sendWelcomeMessage(item.label)}
+                              className="flex items-center px-3 py-1.5 bg-[#1e293b] border border-white/20 rounded-[14px] text-xs font-bold text-white/80 transition-all cursor-pointer pointer-events-auto m-1"
+                              style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                            >
+                              <item.icon className="w-3.5 h-3.5 mr-2" />
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Control Buttons */}
+                      <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="flex items-center gap-3 flex-shrink-0 relative z-20"
+                      >
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            heygenService.interruptAvatar();
+                            setIsSpeaking(false);
+                            if (isListening) {
+                              const finalText = voiceService.stopListening();
+                              setIsListening(false);
+                              setVoiceTranscript("");
+                              if (finalText.trim()) {
+                                sendWelcomeMessage(finalText.trim());
+                              }
+                            } else {
+                              setIsListening(true);
+                              setVoiceTranscript("");
+                              voiceService.startListening({
+                                onPartial: (text) => setVoiceTranscript(text),
+                                onCommitted: (text) => {
+                                  setVoiceTranscript("");
+                                  voiceService.stopListening();
+                                  setIsListening(false);
+                                  if (text.trim()) {
+                                    sendWelcomeMessage(text.trim());
+                                  }
+                                },
+                                onError: () => { setIsListening(false); setVoiceTranscript(""); },
+                                onStateChange: (listening) => setIsListening(listening),
+                              });
+                            }
+                          }}
+                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
+                        >
+                          {isListening && (
+                            <motion.div
+                              className="absolute inset-0 bg-white/20"
+                              animate={{ opacity: [0.1, 0.3, 0.1] }}
+                              transition={{ duration: 1.5, repeat: Infinity }}
+                            />
+                          )}
+                          <Mic className={`w-5 h-5 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
+                          <span className="relative z-10">
+                            {isListening ? "LISTENING..." : isSpeaking ? "SPEAKING..." : "TAP TO SPEAK"}
+                          </span>
+                        </motion.button>
+
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleReset}
+                          className="w-11 h-11 rounded-[20px] bg-gradient-to-br from-[#DC2626] to-[#B91C1C] border-2 border-white/10 flex items-center justify-center hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
+                        >
+                          <X className="w-5 h-5" />
+                        </motion.button>
+                      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            }
+            {/* ==================== FACE NOT RECOGNIZED ==================== */}
+            {
+              state === "face-not-recognized" && (
+                <motion.div
+                  key="face-not-recognized"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full w-full flex flex-col items-center justify-center px-6 pt-14 pb-4 relative z-10"
+                >
+                  <div className="w-full max-w-2xl relative z-20">
+                    <div className="bg-[#1e293b] border border-white/10 rounded-[24px] p-5 text-center" style={{ backgroundColor: 'rgba(30,41,59,0.95)' }}>
+                      <div className="w-14 h-14 rounded-full bg-[#FB7185]/20 flex items-center justify-center mx-auto mb-3">
+                        <X className="w-7 h-7 text-[#FB7185]" />
+                      </div>
+                      <h2 className="text-2xl font-black mb-3 text-white">
+                        Face Not Recognized
+                      </h2>
+                      <p className="text-base text-white/70 mb-4">
+                        We couldn't match your face. Please try again or use manual check-in.
+                      </p>
+
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => { setScanMessage(null); setState("face-scanning"); }}
+                          className="w-full px-6 py-2.5 rounded-[14px] bg-[#22D3EE] font-black text-white flex items-center justify-center cursor-pointer pointer-events-auto mb-3"
+                        >
+                          <Scan className="w-5 h-5 mr-2" />
+                          Try Again
+                        </button>
+                        <button
+                          onClick={() => setState("manual-checkin")}
+                          className="w-full px-6 py-2.5 rounded-[14px] bg-[#1e293b] border border-white font-black text-white flex items-center justify-center cursor-pointer pointer-events-auto mb-3"
+                          style={{ borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        >
+                          <User className="w-5 h-5 mr-2" />
+                          Manual Check-In
+                        </button>
+                        <button
+                          onClick={handleReset}
+                          className="w-full px-4 py-2 rounded-[10px] text-sm font-bold cursor-pointer pointer-events-auto"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                        >
+                          ← Back to Menu
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            }
+          </AnimatePresence>
         </div>
-      )}
-    </div>
+
+        {/* Footer - hidden during chat/welcome to avoid overlapping controls; z-[50] so it's above overlay and logo links are clickable */}
+        {
+          state !== "chat" && state !== "welcome" && (
+            <div className="absolute bottom-0 left-0 right-0 z-[90] py-2 pointer-events-auto" style={{ backgroundColor: 'rgba(0,0,0,0.8)', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex items-center justify-center flex-wrap gap-4 px-4">
+                <span className="text-xs text-gray-400 font-bold tracking-wider uppercase">Powered by</span>
+                <a href="https://technocit.com/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity pointer-events-auto">
+                  <img src="/images/tcit_logo.svg" alt="TechnoCIT" className="h-6 object-contain" />
+                </a>
+                <span className="text-xs text-gray-400 font-bold">&</span>
+                <a href="https://www.nfs.ae/" target="_blank" rel="noopener noreferrer" className="cursor-pointer hover:opacity-70 transition-opacity pointer-events-auto">
+                  <img src="/images/nfs_logo.jpg" alt="NFS Technologies" className="h-6 object-contain" />
+                </a>
+              </div>
+            </div>
+          )
+        }
+      </div>
+    </>
   );
 }
+
+export default KioskMain;
