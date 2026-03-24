@@ -1,13 +1,13 @@
 import { Link, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { Check, Edit, Calendar } from "lucide-react";
-import { registration, events } from "../../../lib/api";
+import { registration } from "../../../lib/api";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 
 export function ReviewConfirm() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<any>(null);
   const [faceImage, setFaceImage] = useState<string | null>(null);
-  const [eventData, setEventData] = useState<any>(null);
   const [consents, setConsents] = useState({
     terms: false,
     faceRecognition: false,
@@ -19,16 +19,6 @@ export function ReviewConfirm() {
     const image = sessionStorage.getItem("faceImage");
     if (data) setFormData(JSON.parse(data));
     if (image) setFaceImage(image);
-
-    events
-      .listPublic()
-      .then((list) => {
-        if (list.length === 0) return;
-        const storedId = sessionStorage.getItem("eventId");
-        const ev = storedId ? list.find((e: { _id: string }) => e._id === storedId) ?? list[0] : list[0];
-        setEventData(ev);
-      })
-      .catch(() => {});
   }, []);
 
   const handleSubmit = async () => {
@@ -63,7 +53,7 @@ export function ReviewConfirm() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{eventData?.name ?? "Event"}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
         </div>
       </header>
@@ -212,22 +202,16 @@ export function ReviewConfirm() {
                   <div>
                     <p className="text-[#64748B]">Event</p>
                     <p className="text-[#0F172A] font-medium">
-                      {eventData?.name ?? "FutureFin Expo 2026"}
+                      {REGISTRATION_HEADER_EVENT_TITLE}
                     </p>
                   </div>
                   <div>
                     <p className="text-[#64748B]">Date</p>
-                    <p className="text-[#0F172A] font-medium">
-                      {eventData?.date
-                        ? new Date(eventData.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                        : "TBA"}
-                    </p>
+                    <p className="text-[#0F172A] font-medium">TBA</p>
                   </div>
                   <div>
                     <p className="text-[#64748B]">Venue</p>
-                    <p className="text-[#0F172A] font-medium">
-                      {eventData?.location ?? "TBA"}
-                    </p>
+                    <p className="text-[#0F172A] font-medium">TBA</p>
                   </div>
                   <div>
                     <p className="text-[#64748B]">Badge Type</p>

@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { useState, useEffect, useCallback } from "react";
 import { Check, Calendar, AlertCircle } from "lucide-react";
 import { registration, events as eventsApi, ApiError } from "../../../lib/api";
-import { useRegistrationEventName } from "../../../lib/useRegistrationEventName";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 import {
   Select,
   SelectContent,
@@ -49,7 +49,6 @@ function isValidEmail(value: string): boolean {
 
 export function ProfileSetup() {
   const navigate = useNavigate();
-  const eventName = useRegistrationEventName();
   const [eventId, setEventId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
@@ -162,7 +161,7 @@ export function ProfileSetup() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{eventName ?? "Event"}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
         </div>
       </header>

@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Home, Download, Calendar, Share2, AlertCircle } from "lucide-react";
 import { registration, kiosk, resolveUploadUrl } from "../../../lib/api";
-import { useRegistrationEventName } from "../../../lib/useRegistrationEventName";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 import {
   downloadTicketPdf,
   downloadEventCalendar,
@@ -17,7 +17,6 @@ import { DigitalTicketCard } from "../../components/registration/digital-ticket-
 
 export function ViewTicket() {
   const ticketCardRef = useRef<HTMLDivElement>(null);
-  const fallbackEventName = useRegistrationEventName();
   const [searchParams] = useSearchParams();
   const [searchMethod, setSearchMethod] = useState<"email" | "id">("email");
   const [searchValue, setSearchValue] = useState("");
@@ -66,8 +65,6 @@ export function ViewTicket() {
     await loadTicket(searchMethod, searchValue);
   };
 
-  const headerEventName = ticketData?.event?.name ?? fallbackEventName ?? "Event";
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Plus_Jakarta_Sans']">
       {/* Header */}
@@ -78,7 +75,7 @@ export function ViewTicket() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{headerEventName}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
           <Link
             to="/"

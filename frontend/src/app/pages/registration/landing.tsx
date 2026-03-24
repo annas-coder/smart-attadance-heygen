@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Calendar, MapPin, Users, Award, Building2, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { events } from "../../../lib/api";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 
 function computeTimeLeft(targetDate: Date) {
   const diff = targetDate.getTime() - Date.now();
@@ -51,7 +52,7 @@ export function RegistrationLanding() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{eventData?.name ?? "Event"}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
           <p className="text-sm text-[#64748B]">
             Already registered?{" "}

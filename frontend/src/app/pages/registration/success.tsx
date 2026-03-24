@@ -14,6 +14,7 @@ import {
   ticketDisplayToSharePayload,
   type TicketDisplay,
 } from "../../../lib/ticketDisplay";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 import { DigitalTicketCard } from "../../components/registration/digital-ticket-card";
 
 export function RegistrationSuccess() {
@@ -68,7 +69,6 @@ export function RegistrationSuccess() {
   if (!ticketDisplay) return null;
 
   const ticketPayload = ticketDisplayToSharePayload(ticketDisplay);
-  const eventTitle = ticketDisplay.event?.name ?? "FutureFin Expo 2026";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Plus_Jakarta_Sans']">
@@ -79,7 +79,7 @@ export function RegistrationSuccess() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{eventTitle}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
         </div>
       </header>
@@ -96,7 +96,7 @@ export function RegistrationSuccess() {
               <Check className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-[#0F172A] mb-3">You're Registered!</h1>
-            <p className="text-xl text-[#64748B]">See you at {eventTitle}!</p>
+            <p className="text-xl text-[#64748B]">See you at {REGISTRATION_HEADER_EVENT_TITLE}!</p>
           </motion.div>
 
           <motion.div

@@ -13,11 +13,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { registration } from "../../../lib/api";
-import { useRegistrationEventName } from "../../../lib/useRegistrationEventName";
+import { REGISTRATION_HEADER_EVENT_TITLE } from "../../../lib/registrationConstants";
 
 export function FaceCapture() {
   const navigate = useNavigate();
-  const eventName = useRegistrationEventName();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +178,7 @@ export function FaceCapture() {
             className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
           >
             <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
-            <span className="font-bold truncate">{eventName ?? "Event"}</span>
+            <span className="font-bold truncate">{REGISTRATION_HEADER_EVENT_TITLE}</span>
           </Link>
         </div>
       </header>
