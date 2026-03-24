@@ -306,7 +306,7 @@ export function FaceCapture() {
                       ref={videoRef}
                       autoPlay
                       playsInline
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover -scale-x-100"
                     />
                     {/* Face guide overlay */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

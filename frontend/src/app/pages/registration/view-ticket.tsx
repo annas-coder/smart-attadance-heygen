@@ -1,41 +1,67 @@
-import { Link } from "react-router";
-import { useState } from "react";
-import { Search, Home, QrCode, Download, Calendar, Share2, AlertCircle } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search, Home, Download, Calendar, Share2, AlertCircle } from "lucide-react";
 import { registration, kiosk, resolveUploadUrl } from "../../../lib/api";
+import {
+  downloadTicketPdf,
+  downloadEventCalendar,
+  shareTicket,
+} from "../../../lib/ticketActions";
+import {
+  mapApiGuestToTicketDisplay,
+  ticketDisplayToSharePayload,
+  type TicketDisplay,
+} from "../../../lib/ticketDisplay";
+import { DigitalTicketCard } from "../../components/registration/digital-ticket-card";
 
 export function ViewTicket() {
+  const ticketCardRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
   const [searchMethod, setSearchMethod] = useState<"email" | "id">("email");
   const [searchValue, setSearchValue] = useState("");
-  const [ticketData, setTicketData] = useState<any>(null);
+  const [ticketData, setTicketData] = useState<TicketDisplay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = async () => {
+  const loadTicket = useCallback(async (method: "email" | "id", value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      const data = searchMethod === "id"
-        ? await registration.getTicket(searchValue)
-        : await kiosk.lookup(searchValue, "email");
+      const data =
+        method === "id"
+          ? await registration.getTicket(trimmed)
+          : await kiosk.lookup(trimmed, "email");
 
-      const g = data.guest;
-      setTicketData({
-        fullName: g.fullName,
-        email: g.email,
-        designation: g.designation,
-        company: g.company,
-        badge: g.badge || "General",
-        faceImage: resolveUploadUrl(g.faceImagePath),
-        registrationId: g.registrationId || "N/A",
-        event: data.event,
-      });
+      setTicketData(mapApiGuestToTicketDisplay(data.guest, data.event, resolveUploadUrl));
     } catch {
       setError("No registration found. Please check your details and try again.");
       setTicketData(null);
     }
 
     setLoading(false);
+  }, []);
+
+  const registrationIdParam = searchParams.get("registrationId");
+  const emailParam = searchParams.get("email");
+
+  useEffect(() => {
+    if (registrationIdParam) {
+      setSearchMethod("id");
+      setSearchValue(registrationIdParam);
+      void loadTicket("id", registrationIdParam);
+    } else if (emailParam) {
+      setSearchMethod("email");
+      setSearchValue(emailParam);
+      void loadTicket("email", emailParam);
+    }
+  }, [registrationIdParam, emailParam, loadTicket]);
+
+  const handleSearch = async () => {
+    await loadTicket(searchMethod, searchValue);
   };
 
   return (
@@ -138,95 +164,36 @@ export function ViewTicket() {
           {/* Ticket Display */}
           {ticketData && (
             <div className="space-y-6">
-              {/* Digital Ticket */}
-              <div className="bg-white border-2 border-[#E2E8F0] rounded-[14px] overflow-hidden">
-                {/* Ticket Header */}
-                <div className="bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] p-6 text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold">{ticketData.event?.name ?? "FutureFin Expo 2026"}</h2>
-                      <p className="text-sm opacity-90">Premium FinTech Event</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm opacity-90">
-                        {ticketData.event?.date
-                          ? new Date(ticketData.event.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                          : "TBA"}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm opacity-90">
-                    {ticketData.event?.location ?? "TBA"}
-                  </p>
-                </div>
-
-                {/* Ticket Body */}
-                <div className="p-6">
-                  <div className="flex gap-6 mb-6">
-                    {/* Avatar */}
-                    {ticketData.faceImage ? (
-                      <img
-                        src={ticketData.faceImage}
-                        alt="Profile"
-                        className="w-24 h-24 rounded-full object-cover border-4 border-[#22D3EE]"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center text-white text-3xl font-bold">
-                        {ticketData.fullName
-                          ?.split(" ")
-                          .map((n: string) => n[0])
-                          .join("")}
-                      </div>
-                    )}
-
-                    {/* Details */}
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-bold text-[#0F172A] mb-1">
-                        {ticketData.fullName}
-                      </h3>
-                      <p className="text-[#64748B] mb-1">{ticketData.designation}</p>
-                      <p className="text-[#64748B] mb-3">{ticketData.company}</p>
-                      <div className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-[#22D3EE] text-white uppercase">
-                        {ticketData.badge}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* QR Code */}
-                  <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-6">
-                    <div>
-                      <p className="text-sm text-[#64748B] mb-1">Registration ID</p>
-                      <p className="font-mono font-bold text-[#0F172A]">
-                        {ticketData.registrationId}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="w-24 h-24 bg-[#0B0F1A] rounded-lg flex items-center justify-center">
-                        <QrCode className="w-16 h-16 text-white" />
-                      </div>
-                      <p className="text-xs text-[#64748B] mt-1">QR Code</p>
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="mt-6 pt-6 border-t border-[#E2E8F0]">
-                    <p className="text-sm text-[#64748B] mb-1">Status</p>
-                    <p className="font-bold text-[#34D399]">Confirmed</p>
-                  </div>
-                </div>
-              </div>
+              <DigitalTicketCard ref={ticketCardRef} ticket={ticketData} />
 
               {/* Actions */}
               <div className="grid md:grid-cols-2 gap-4">
-                <button className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void downloadTicketPdf(
+                      ticketDisplayToSharePayload(ticketData),
+                      ticketCardRef.current,
+                    )
+                  }
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90"
+                >
                   <Download className="w-5 h-5" />
                   Download Ticket (PDF)
                 </button>
-                <button className="flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-[#E2E8F0] text-[#0F172A] font-medium hover:bg-white">
+                <button
+                  type="button"
+                  onClick={() => downloadEventCalendar(ticketDisplayToSharePayload(ticketData))}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-[#E2E8F0] text-[#0F172A] font-medium hover:bg-white"
+                >
                   <Calendar className="w-5 h-5" />
                   Add to Calendar
                 </button>
-                <button className="flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-[#E2E8F0] text-[#0F172A] font-medium hover:bg-white">
+                <button
+                  type="button"
+                  onClick={() => void shareTicket(ticketDisplayToSharePayload(ticketData))}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-[#E2E8F0] text-[#0F172A] font-medium hover:bg-white"
+                >
                   <Share2 className="w-5 h-5" />
                   Share
                 </button>

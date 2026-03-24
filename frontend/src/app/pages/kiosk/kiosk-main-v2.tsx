@@ -952,7 +952,7 @@ export function KioskMain() {
                         autoPlay
                         playsInline
                         muted
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover -scale-x-100"
                       />
                       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
 

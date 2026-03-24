@@ -161,7 +161,20 @@ export const guests = {
 
 // ─── Registration (public) ─────────────────────────────────────
 
+export type CheckEmailResult =
+  | { exists: false }
+  | {
+      exists: true;
+      status: string;
+      registrationId: string | null;
+      guestId: string;
+    };
+
 export const registration = {
+  checkEmail(email: string, eventId: string) {
+    const params = new URLSearchParams({ email: email.trim(), eventId });
+    return request<CheckEmailResult>(`/register/check-email?${params.toString()}`);
+  },
   submit(data: {
     eventId: string;
     fullName: string;

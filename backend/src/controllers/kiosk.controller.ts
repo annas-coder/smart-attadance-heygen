@@ -33,7 +33,13 @@ export async function lookupGuest(req: Request, res: Response) {
     return sendSuccess(res, {
       guest,
       event: event
-        ? { name: event.name, date: event.date, location: event.location }
+        ? {
+            name: event.name,
+            date: event.date,
+            endDate: event.endDate,
+            location: event.location,
+            description: event.description,
+          }
         : null,
     });
   } catch (err: any) {

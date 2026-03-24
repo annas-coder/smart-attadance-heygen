@@ -24,6 +24,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   "/uploads",
+  (_req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    next();
+  },
   express.static(path.join(__dirname, "..", "uploads"))
 );
 

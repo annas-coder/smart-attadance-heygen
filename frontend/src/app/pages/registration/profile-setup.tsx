@@ -1,12 +1,22 @@
 import { Link, useNavigate } from "react-router";
-import { useState, useEffect } from "react";
-import { Check, Home } from "lucide-react";
-import { registration, events as eventsApi } from "../../../lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { Check, Home, AlertCircle } from "lucide-react";
+import { registration, events as eventsApi, ApiError } from "../../../lib/api";
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 export function ProfileSetup() {
   const navigate = useNavigate();
   const [eventId, setEventId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    registrationId: string | null;
+    guestId: string;
+    status: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -27,10 +37,36 @@ export function ProfileSetup() {
       .catch(() => {});
   }, []);
 
+  const handleEmailBlur = useCallback(async () => {
+    const email = formData.email.trim();
+    if (!eventId || !isValidEmail(email)) {
+      return;
+    }
+    setEmailCheckLoading(true);
+    setDuplicateInfo(null);
+    try {
+      const result = await registration.checkEmail(email, eventId);
+      if (result.exists) {
+        setDuplicateInfo({
+          registrationId: result.registrationId,
+          guestId: result.guestId,
+          status: result.status,
+        });
+      }
+    } catch {
+      // ignore check failures; submit will still validate
+    } finally {
+      setEmailCheckLoading(false);
+    }
+  }, [eventId, formData.email]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventId) {
       alert("No events available for registration at the moment. Please try again later.");
+      return;
+    }
+    if (duplicateInfo) {
       return;
     }
 
@@ -40,8 +76,24 @@ export function ProfileSetup() {
       sessionStorage.setItem("registrationData", JSON.stringify(formData));
       sessionStorage.setItem("guestId", result.guestId);
       sessionStorage.setItem("eventId", eventId);
+      setDuplicateInfo(null);
       navigate("/register/face");
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && err.data?.errors && typeof err.data.errors === "object") {
+        const details = err.data.errors as {
+          guestId?: string;
+          registrationId?: string | null;
+          existingStatus?: string;
+        };
+        if (details.guestId) {
+          setDuplicateInfo({
+            guestId: details.guestId,
+            registrationId: details.registrationId ?? null,
+            status: details.existingStatus ?? "Registered",
+          });
+        }
+        return;
+      }
       console.error("Registration failed:", err);
       alert("Registration failed. Please try again.");
     } finally {
@@ -116,7 +168,31 @@ export function ProfileSetup() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[#0F172A] mb-2">Email <span className="text-[#FB7185]">*</span></label>
-                  <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 rounded-full border border-[#E2E8F0] focus:outline-none focus:border-[#22D3EE]" placeholder="you@example.com" />
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      setDuplicateInfo(null);
+                    }}
+                    onBlur={handleEmailBlur}
+                    className={`w-full px-4 py-3 rounded-full border focus:outline-none focus:border-[#22D3EE] ${
+                      duplicateInfo ? "border-[#FB7185]" : "border-[#E2E8F0]"
+                    }`}
+                    placeholder="you@example.com"
+                  />
+                  {emailCheckLoading && (
+                    <p className="text-xs text-[#64748B] mt-2">Checking email…</p>
+                  )}
+                  {duplicateInfo && (
+                    <div className="mt-3 p-4 rounded-[12px] border border-[#FB7185]/40 bg-[#FFF1F2] flex gap-2">
+                      <AlertCircle className="w-5 h-5 text-[#E11D48] flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-[#9F1239] font-medium">
+                        This email is already registered for this event. Please use a different email address to register again.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#0F172A] mb-2">Phone Number <span className="text-[#FB7185]">*</span></label>
@@ -165,7 +241,11 @@ export function ProfileSetup() {
               </div>
               <div className="pt-6 flex gap-4">
                 <Link to="/register" className="px-6 py-3 rounded-full border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] font-medium">Back</Link>
-                <button type="submit" disabled={!isFormValid || submitting} className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button
+                  type="submit"
+                  disabled={!isFormValid || submitting || !!duplicateInfo}
+                  className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {submitting ? "Submitting..." : "Continue to Face Capture"}
                 </button>
               </div>

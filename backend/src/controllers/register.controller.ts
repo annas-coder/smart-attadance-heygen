@@ -26,6 +26,49 @@ const registerSchema = z.object({
   country: z.string().optional(),
 });
 
+const checkEmailQuerySchema = z.object({
+  email: z.string().email(),
+  eventId: z.string().min(1),
+});
+
+/** Public: check if email is already registered for an event (excludes Invited — they may complete signup). */
+export async function checkRegistrationEmail(req: Request, res: Response) {
+  try {
+    const emailQ = req.query.email;
+    const eventIdQ = req.query.eventId;
+    const { email, eventId } = checkEmailQuerySchema.parse({
+      email: typeof emailQ === "string" ? emailQ : "",
+      eventId: typeof eventIdQ === "string" ? eventIdQ : "",
+    });
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return sendError(res, "Event not found", 404);
+    }
+
+    const guest = await Guest.findOne({
+      eventId: new mongoose.Types.ObjectId(eventId),
+      email: email.toLowerCase(),
+    });
+
+    if (!guest || guest.status === "Invited") {
+      return sendSuccess(res, { exists: false });
+    }
+
+    return sendSuccess(res, {
+      exists: true,
+      status: guest.status,
+      registrationId: guest.registrationId ?? null,
+      guestId: guest._id.toString(),
+    });
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return sendError(res, "Validation failed", 400, err.errors);
+    }
+    throw err;
+  }
+}
+
 export async function submitRegistration(req: Request, res: Response) {
   try {
     const data = registerSchema.parse(req.body);
@@ -41,6 +84,14 @@ export async function submitRegistration(req: Request, res: Response) {
     });
 
     if (guest) {
+      if (guest.status !== "Invited") {
+        return sendError(res, "This email is already registered for this event.", 409, {
+          existingStatus: guest.status,
+          registrationId: guest.registrationId ?? null,
+          guestId: guest._id.toString(),
+        });
+      }
+
       guest.set({
         fullName: data.fullName,
         phone: data.phone,
@@ -151,20 +202,15 @@ export async function uploadFaceImage(req: Request, res: Response) {
 
     if (result.raw.length > 1) {
       qualityChecks.singleFace = false;
+      console.warn(
+        `[uploadFaceImage] guest ${guestId}: multiple faces detected (${result.raw.length}), using first face for enrollment`
+      );
     }
 
-    if (!result.qualityPassed || !qualityChecks.singleFace) {
-      await guest.save();
-      return sendSuccess(res, {
-        guestId: guest._id,
-        faceImagePath: guest.faceImagePath,
-        status: guest.status,
-        qualityChecks,
-        enrolled: false,
-        retakeRequired: true,
-        reason: "Image quality checks failed. Please retake the photo.",
-      });
-    }
+    const qualityWarning =
+      !result.qualityPassed || !qualityChecks.singleFace
+        ? "Image quality is not ideal, but we will use it."
+        : undefined;
 
     const galleryId = guest.eventId.toString();
     const personId = guest._id.toString();
@@ -187,6 +233,8 @@ export async function uploadFaceImage(req: Request, res: Response) {
       status: guest.status,
       qualityChecks,
       enrolled: true,
+      retakeRequired: false,
+      ...(qualityWarning ? { reason: qualityWarning } : {}),
     });
   } catch (err: any) {
     console.error("Youverse face processing error:", err.message);
@@ -262,7 +310,9 @@ export async function confirmRegistration(req: Request, res: Response) {
       ? {
           name: event.name,
           date: event.date,
+          endDate: event.endDate,
           location: event.location,
+          description: event.description,
         }
       : null,
   });
@@ -284,7 +334,9 @@ export async function viewTicket(req: Request, res: Response) {
       ? {
           name: event.name,
           date: event.date,
+          endDate: event.endDate,
           location: event.location,
+          description: event.description,
         }
       : null,
   });
