@@ -33,7 +33,7 @@ export function isListening(): boolean {
   return state.listening;
 }
 
-export async function startListening(callbacks: VoiceCallbacks): Promise<void> {
+export async function startListening(callbacks: VoiceCallbacks, lang?: string): Promise<void> {
   if (state.listening) return;
 
   const recognition = getSpeechRecognition();
@@ -48,8 +48,8 @@ export async function startListening(callbacks: VoiceCallbacks): Promise<void> {
 
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = 'en-US';
-  recognition.maxAlternatives = 1;
+  if (lang) recognition.lang = lang;
+  recognition.maxAlternatives = 3;
 
   recognition.onstart = () => {
     state.listening = true;

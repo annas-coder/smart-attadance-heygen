@@ -26,6 +26,9 @@ You must NOT speculate.
 If information is not included in the embedded knowledge, you must say:
 "I don't see that information in the official FutureFin Expo guide. Would you like me to connect you with the Registration Desk at Ext. 1001?"
 
+LANGUAGE RULE (MANDATORY)
+You MUST detect the language the user is speaking and respond in the SAME language. If the user writes in Arabic, respond entirely in Arabic. If the user writes in English, respond in English. If the user mixes languages, respond in the primary language they used. Always match the user's language.
+
 RESPONSE LENGTH RULE (MANDATORY)
 You MUST respond in no more than 2 sentences. Pack as much relevant information as possible into those 2 sentences. Never exceed 2 sentences.
 
@@ -670,6 +673,9 @@ After the first greeting, go straight to answering questions without re-greeting
 Do NOT dump all their details unless they ask.
 Only provide relevant details when asked.
 
+LANGUAGE RULE (MANDATORY)
+You MUST detect the language the user is speaking and respond in the SAME language. If the user writes in Arabic, respond entirely in Arabic. If the user writes in English, respond in English. If the user mixes languages, respond in the primary language they used. Always match the user's language.
+
 RESPONSE LENGTH RULE (MANDATORY)
 You MUST respond in no more than 2 sentences. Pack as much relevant information as possible into those 2 sentences. Never exceed 2 sentences.
 
@@ -1266,8 +1272,26 @@ const llm = new ChatGroq({
   temperature: 0.3,
 });
 
-async function chat(sessionId: string, message: string, systemPrompt: string): Promise<string> {
+export type KioskChatLang = "en-US" | "ar";
+
+function withResponseLanguageInstruction(message: string, lang: KioskChatLang | undefined): string {
+  if (lang === "ar") {
+    return `[RESPOND IN ARABIC] ${message}`;
+  }
+  if (lang === "en-US") {
+    return `[RESPOND IN ENGLISH] ${message}`;
+  }
+  return message;
+}
+
+async function chat(
+  sessionId: string,
+  message: string,
+  systemPrompt: string,
+  lang?: KioskChatLang
+): Promise<string> {
   const session = getOrCreateSession(sessionId);
+  const inputForModel = withResponseLanguageInstruction(message, lang);
 
   const prompt = ChatPromptTemplate.fromMessages([
     SystemMessagePromptTemplate.fromTemplate(systemPrompt),
@@ -1279,7 +1303,7 @@ async function chat(sessionId: string, message: string, systemPrompt: string): P
 
   const result = await chain.invoke({
     history: session.history,
-    input: message,
+    input: inputForModel,
   });
 
   session.history.push(new HumanMessage(message));
@@ -1288,8 +1312,8 @@ async function chat(sessionId: string, message: string, systemPrompt: string): P
   return typeof result.content === "string" ? result.content : JSON.stringify(result.content);
 }
 
-export async function generalChat(sessionId: string, message: string): Promise<string> {
-  return chat(sessionId, message, GENERAL_SYSTEM_PROMPT);
+export async function generalChat(sessionId: string, message: string, lang?: KioskChatLang): Promise<string> {
+  return chat(sessionId, message, GENERAL_SYSTEM_PROMPT, lang);
 }
 
 interface UserProfile {
@@ -1353,8 +1377,13 @@ function buildUserProfileBlock(profile: UserProfile): string {
   return lines.join("\n");
 }
 
-export async function userChat(sessionId: string, message: string, profile: UserProfile): Promise<string> {
+export async function userChat(
+  sessionId: string,
+  message: string,
+  profile: UserProfile,
+  lang?: KioskChatLang
+): Promise<string> {
   const profileBlock = buildUserProfileBlock(profile);
   const systemPrompt = USER_SYSTEM_PROMPT.replace("{userProfile}", profileBlock);
-  return chat(sessionId, message, systemPrompt);
+  return chat(sessionId, message, systemPrompt, lang);
 }

@@ -382,6 +382,7 @@ export function KioskMain() {
 
   const [heygenActive, setHeygenActive] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceLang, setVoiceLang] = useState<'ar' | 'en-US'>('en-US');
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [manualError, setManualError] = useState<string | null>(null);
 
@@ -424,13 +425,19 @@ export function KioskMain() {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [conversation, isSpeaking]);
+  }, [conversation, isSpeaking, voiceTranscript, isListening]);
 
   useEffect(() => {
     if (welcomeScrollRef.current) {
       welcomeScrollRef.current.scrollTo({ top: welcomeScrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [welcomeConversation, isSpeaking]);
+  }, [welcomeConversation, isSpeaking, voiceTranscript, isListening]);
+
+  // Pre-resolve Salma avatar candidates (logs all available avatars to console for debugging)
+  useEffect(() => {
+    if (!heygenService.heygenReady()) return;
+    heygenService.resolveSalmaAvatarCandidates().catch(() => {});
+  }, []);
 
   // Auto-start camera when in face scanning mode
   useEffect(() => {
@@ -475,7 +482,7 @@ export function KioskMain() {
         setHeygenActive(false);
       }
     };
-  }, [state]);
+  }, [state, userData]);
 
   // Auto-start chat welcome message
   useEffect(() => {
@@ -499,7 +506,7 @@ export function KioskMain() {
     setConversation(prev => [...prev, { type: "user", text: message, timestamp: new Date() }]);
     setIsSpeaking(true);
     try {
-      const response = await fetchGeneralChatResponse(message);
+      const response = await fetchGeneralChatResponse(message, voiceLang);
       setConversation(prev => [...prev, { type: "assistant", text: response, timestamp: new Date() }]);
       heygenService.sendTextToAvatar(response);
     } catch {
@@ -508,7 +515,7 @@ export function KioskMain() {
     } finally {
       setIsSpeaking(false);
     }
-  }, []);
+  }, [voiceLang]);
 
   const sendWelcomeMessage = useCallback(async (message: string) => {
     heygenService.interruptAvatar();
@@ -526,7 +533,7 @@ export function KioskMain() {
           ? [userData.agenda.currentSession]
           : undefined,
       };
-      const response = await fetchUserChatResponse(message, profile);
+      const response = await fetchUserChatResponse(message, profile, voiceLang);
       setWelcomeConversation(prev => [...prev, { type: "assistant", text: response, timestamp: new Date() }]);
       heygenService.sendTextToAvatar(response);
     } catch {
@@ -535,7 +542,7 @@ export function KioskMain() {
     } finally {
       setIsSpeaking(false);
     }
-  }, [userData]);
+  }, [userData, voiceLang]);
 
   const startCamera = async () => {
     try {
@@ -1166,7 +1173,7 @@ export function KioskMain() {
                             }}
                           >
                             {heygenActive ? (
-                              <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
+                              <canvas ref={chromaCanvasRef} className="w-full h-full object-contain" style={{ background: '#0f1729', transform: 'scale(2.0)' }} />
                             ) : (
                               <SmileyLoader />
                             )}
@@ -1297,6 +1304,18 @@ export function KioskMain() {
                             ))
                           )}
 
+                          {isListening && voiceTranscript && (
+                            <div className="flex justify-end">
+                              <div className="max-w-[80%] rounded-[20px] px-4 py-3 bg-gradient-to-r from-[#8B5CF6]/60 to-[#A78BFA]/60 border border-[#8B5CF6]/30 text-white/80">
+                                <p className="text-sm leading-relaxed italic">{voiceTranscript}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity }} className="w-1 h-1 rounded-full bg-[#8B5CF6]" />
+                                  <span className="text-[10px] opacity-60">listening...</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Typing Indicator */}
                           {isSpeaking && (
                             <motion.div
@@ -1325,26 +1344,31 @@ export function KioskMain() {
                       <div className="mb-2 flex-shrink-0 relative z-30">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
+                          <p className={`text-[10px] text-white/40 font-black tracking-widest ${voiceLang === 'ar' ? '' : 'uppercase'}`}>
+                            {voiceLang === 'ar' ? 'سؤال سريع' : 'Quick Ask'}
+                          </p>
                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {[
-                            { icon: Calendar, label: "Event Schedule" },
-                            { icon: MapPin, label: "Venue Map" },
-                            { icon: User, label: "Speakers" },
-                            { icon: Navigation, label: "WiFi Details" }
-                          ].map((item, i) => (
+                            { icon: Calendar, en: "Event Schedule", ar: "جدول الفعالية" },
+                            { icon: MapPin, en: "Venue Map", ar: "خريطة المكان" },
+                            { icon: User, en: "Speakers", ar: "المتحدثون" },
+                            { icon: Navigation, en: "WiFi Details", ar: "تفاصيل الواي فاي" }
+                          ].map((item, i) => {
+                            const label = voiceLang === 'ar' ? item.ar : item.en;
+                            return (
                             <button
                               key={i}
                               type="button"
-                              onClick={() => sendGeneralMessage(item.label)}
+                              onClick={() => sendGeneralMessage(label)}
                               className="flex items-center px-3 py-1.5 bg-white/5 border border-white/20 rounded-[14px] text-xs font-bold text-white/80 hover:bg-white/10 hover:scale-[1.02] transition-all cursor-pointer m-1"
                             >
                               <item.icon className="w-3.5 h-3.5 mr-2" />
-                              {item.label}
+                              {label}
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1353,8 +1377,25 @@ export function KioskMain() {
                         initial={{ opacity: 1 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="flex items-center gap-3 flex-shrink-0 relative z-20"
+                        className="flex items-center gap-2 flex-shrink-0 relative z-20"
                       >
+                        <div className="h-11 rounded-[20px] border-2 border-white/20 flex items-center p-0.5 shrink-0 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setVoiceLang('en-US')}
+                            onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                            className={`h-full px-2.5 rounded-[16px] font-black text-[10px] transition-all cursor-pointer ${voiceLang === 'en-US' ? 'bg-white/20 text-white' : 'text-white/40'}`}
+                            style={{ touchAction: 'manipulation' }}
+                          >EN</button>
+                          <button
+                            type="button"
+                            onClick={() => setVoiceLang('ar')}
+                            onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                            className={`h-full px-2.5 rounded-[16px] font-black text-[10px] transition-all cursor-pointer ${voiceLang === 'ar' ? 'bg-white/20 text-white' : 'text-white/40'}`}
+                            style={{ touchAction: 'manipulation' }}
+                          >عربي</button>
+                        </div>
+
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
@@ -1362,12 +1403,9 @@ export function KioskMain() {
                             heygenService.interruptAvatar();
                             setIsSpeaking(false);
                             if (isListening) {
-                              const finalText = voiceService.stopListening();
+                              voiceService.stopListening();
                               setIsListening(false);
                               setVoiceTranscript("");
-                              if (finalText.trim()) {
-                                sendGeneralMessage(finalText.trim());
-                              }
                             } else {
                               setIsListening(true);
                               setVoiceTranscript("");
@@ -1383,10 +1421,12 @@ export function KioskMain() {
                                 },
                                 onError: () => { setIsListening(false); setVoiceTranscript(""); },
                                 onStateChange: (listening) => setIsListening(listening),
-                              });
+                              }, voiceLang);
                             }
                           }}
-                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
+                          onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden cursor-pointer pointer-events-auto"
+                          style={{ touchAction: 'manipulation' }}
                         >
                           {isListening && (
                             <motion.div
@@ -1395,7 +1435,7 @@ export function KioskMain() {
                               transition={{ duration: 1.5, repeat: Infinity }}
                             />
                           )}
-                          <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
+                          <Mic className={`w-5 h-5 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
                           <span className="relative z-10">{isListening ? "LISTENING..." : "TAP TO SPEAK"}</span>
                         </motion.button>
 
@@ -1408,6 +1448,7 @@ export function KioskMain() {
                           <X className="w-5 h-5" />
                         </motion.button>
                       </motion.div>
+
                     </div>
                   </div>
                 </motion.div>
@@ -1447,7 +1488,7 @@ export function KioskMain() {
                             }}
                           >
                             {heygenActive ? (
-                              <canvas ref={chromaCanvasRef} className="w-full h-full object-cover object-top" />
+                              <canvas ref={chromaCanvasRef} className="w-full h-full object-contain" style={{ background: '#0f1729', transform: 'scale(2.0)' }} />
                             ) : (
                               <SmileyLoader />
                             )}
@@ -1563,6 +1604,18 @@ export function KioskMain() {
                             </motion.div>
                           ))}
 
+                          {isListening && voiceTranscript && (
+                            <div className="flex justify-end">
+                              <div className="max-w-[85%] rounded-[24px] px-5 py-3.5 bg-gradient-to-r from-[#8B5CF6]/60 to-[#A78BFA]/60 border border-[#8B5CF6]/30 text-white/80">
+                                <p className="text-sm leading-relaxed italic">{voiceTranscript}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity }} className="w-1 h-1 rounded-full bg-[#8B5CF6]" />
+                                  <span className="text-[10px] opacity-60">listening...</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Typing Indicator */}
                           {isSpeaking && (
                             <motion.div
@@ -1586,7 +1639,7 @@ export function KioskMain() {
                           )}
 
                           {/* Empty State */}
-                          {welcomeConversation.length === 0 && !isSpeaking && (
+                          {welcomeConversation.length === 0 && !isSpeaking && !isListening && (
                             <div className="flex flex-col items-center justify-center h-full text-center py-12">
                               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#34D399]/20 to-[#22D3EE]/20 border border-white/10 flex items-center justify-center mb-4">
                                 <Mic className="w-7 h-7 text-[#34D399]" />
@@ -1602,27 +1655,32 @@ export function KioskMain() {
                       <div className="mb-2 flex-shrink-0 relative z-50">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Quick Ask</p>
+                          <p className={`text-[10px] text-white/40 font-black tracking-widest ${voiceLang === 'ar' ? '' : 'uppercase'}`}>
+                            {voiceLang === 'ar' ? 'سؤال سريع' : 'Quick Ask'}
+                          </p>
                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {[
-                            { icon: Navigation, label: "Where is my hall?" },
-                            { icon: Calendar, label: "My event schedule" },
-                            { icon: MapPin, label: "Where do I find parking?" },
-                            { icon: User, label: "WiFi Details" }
-                          ].map((item, i) => (
+                            { icon: Navigation, en: "Where is my hall?", ar: "أين قاعتي؟" },
+                            { icon: Calendar, en: "My event schedule", ar: "جدول فعاليتي" },
+                            { icon: MapPin, en: "Where do I find parking?", ar: "أين أجد موقف السيارات؟" },
+                            { icon: User, en: "WiFi Details", ar: "تفاصيل الواي فاي" }
+                          ].map((item, i) => {
+                            const label = voiceLang === 'ar' ? item.ar : item.en;
+                            return (
                             <button
                               key={i}
                               type="button"
-                              onClick={() => sendWelcomeMessage(item.label)}
+                              onClick={() => sendWelcomeMessage(label)}
                               className="flex items-center px-3 py-1.5 bg-[#1e293b] border border-white/20 rounded-[14px] text-xs font-bold text-white/80 transition-all cursor-pointer pointer-events-auto m-1"
                               style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
                             >
                               <item.icon className="w-3.5 h-3.5 mr-2" />
-                              {item.label}
+                              {label}
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1631,8 +1689,25 @@ export function KioskMain() {
                         initial={{ opacity: 1 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="flex items-center gap-3 flex-shrink-0 relative z-20"
+                        className="flex items-center gap-2 flex-shrink-0 relative z-20"
                       >
+                        <div className="h-11 rounded-[20px] border-2 border-white/20 flex items-center p-0.5 shrink-0 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setVoiceLang('en-US')}
+                            onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                            className={`h-full px-2.5 rounded-[16px] font-black text-[10px] transition-all cursor-pointer ${voiceLang === 'en-US' ? 'bg-white/20 text-white' : 'text-white/40'}`}
+                            style={{ touchAction: 'manipulation' }}
+                          >EN</button>
+                          <button
+                            type="button"
+                            onClick={() => setVoiceLang('ar')}
+                            onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                            className={`h-full px-2.5 rounded-[16px] font-black text-[10px] transition-all cursor-pointer ${voiceLang === 'ar' ? 'bg-white/20 text-white' : 'text-white/40'}`}
+                            style={{ touchAction: 'manipulation' }}
+                          >عربي</button>
+                        </div>
+
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
@@ -1640,12 +1715,9 @@ export function KioskMain() {
                             heygenService.interruptAvatar();
                             setIsSpeaking(false);
                             if (isListening) {
-                              const finalText = voiceService.stopListening();
+                              voiceService.stopListening();
                               setIsListening(false);
                               setVoiceTranscript("");
-                              if (finalText.trim()) {
-                                sendWelcomeMessage(finalText.trim());
-                              }
                             } else {
                               setIsListening(true);
                               setVoiceTranscript("");
@@ -1661,10 +1733,12 @@ export function KioskMain() {
                                 },
                                 onError: () => { setIsListening(false); setVoiceTranscript(""); },
                                 onStateChange: (listening) => setIsListening(listening),
-                              });
+                              }, voiceLang);
                             }
                           }}
-                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden"
+                          onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                          className="flex-1 h-11 rounded-[20px] bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] flex items-center justify-center gap-3 font-black text-white text-sm shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:shadow-[0_0_60px_rgba(34,211,238,0.5)] transition-all relative overflow-hidden cursor-pointer pointer-events-auto"
+                          style={{ touchAction: 'manipulation' }}
                         >
                           {isListening && (
                             <motion.div
@@ -1688,6 +1762,7 @@ export function KioskMain() {
                           <X className="w-5 h-5" />
                         </motion.button>
                       </motion.div>
+
                     </div>
                   </div>
                 </motion.div>

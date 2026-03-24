@@ -1,9 +1,21 @@
+import type { StreamingAvatarRow } from './heygenStreamingAvatars';
+
 const HEYGEN_CONFIG = {
   serverUrl: 'https://api.heygen.com',
   apiKey: import.meta.env.VITE_HEYGEN_API_KEY || '',
-  avatarName: 'Graham_Black_Suit_public',
-  voiceId: '',
+  voiceId: 'e27cd18abc7942f5825c8cd7cf75488e',
 };
+
+/** Avatar ID candidates to try in order with streaming.new */
+const AVATAR_CANDIDATES = [
+  'Marianne_Red_Suit_public',
+  'Marianne_ProfessionalLook_public',
+  'Salma_headscarf_Front',
+  'Salma_headscarf_Front_public',
+];
+
+/** Avatar group id for Salma (v2 general API) */
+const SALMA_GROUP_ID = '1721844012';
 
 const SESSION_DURATION_MS = 3 * 60 * 1000;
 
@@ -15,6 +27,7 @@ interface HeyGenState {
   active: boolean;
   timerInterval: ReturnType<typeof setInterval> | null;
   endAt: number;
+  resolvedAvatarId: string | null;
 }
 
 const state: HeyGenState = {
@@ -25,6 +38,7 @@ const state: HeyGenState = {
   active: false,
   timerInterval: null,
   endAt: 0,
+  resolvedAvatarId: null,
 };
 
 export function heygenReady(): boolean {
@@ -35,6 +49,93 @@ export function isSessionActive(): boolean {
   return state.active;
 }
 
+/* ---------- Avatar list fetching + resolution ---------- */
+
+export async function fetchStreamingAvatarList(): Promise<StreamingAvatarRow[]> {
+  if (!heygenReady()) return [];
+  const res = await fetch(`${HEYGEN_CONFIG.serverUrl}/v1/streaming/avatar.list`, {
+    method: 'GET',
+    headers: { 'X-Api-Key': HEYGEN_CONFIG.apiKey },
+  });
+  const j = await res.json();
+  const raw = j?.data;
+  let arr: unknown[] = [];
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && typeof raw === 'object' && Array.isArray((raw as { avatars?: unknown[] }).avatars)) {
+    arr = (raw as { avatars: unknown[] }).avatars;
+  } else if (raw && typeof raw === 'object' && Array.isArray((raw as { list?: unknown[] }).list)) {
+    arr = (raw as { list: unknown[] }).list;
+  }
+  return arr
+    .filter((x): x is StreamingAvatarRow => !!x && typeof (x as StreamingAvatarRow).avatar_id === 'string')
+    .map((x) => ({
+      avatar_id: x.avatar_id,
+      pose_name: typeof x.pose_name === 'string' ? x.pose_name : undefined,
+      status: typeof x.status === 'string' ? x.status : undefined,
+    }));
+}
+
+async function fetchGroupLookIds(): Promise<string[]> {
+  if (!heygenReady()) return [];
+  try {
+    const res = await fetch(
+      `${HEYGEN_CONFIG.serverUrl}/v2/avatar_group/${encodeURIComponent(SALMA_GROUP_ID)}/avatars`,
+      { method: 'GET', headers: { 'X-Api-Key': HEYGEN_CONFIG.apiKey } },
+    );
+    const j = await res.json();
+    const list = j?.data?.avatar_list;
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((x: any) => typeof x?.id === 'string' && (!x.status || x.status === 'completed'))
+      .map((x: any) => x.id as string);
+  } catch (e) {
+    console.warn('[HeyGen] fetchGroupLookIds error', e);
+    return [];
+  }
+}
+
+/**
+ * Build ordered list of avatar_id candidates to try with streaming.new.
+ * Priority: exact Salma IDs → matches from streaming list → group look IDs → first available streaming avatar.
+ */
+export async function resolveSalmaAvatarCandidates(): Promise<string[]> {
+  const streamingList = await fetchStreamingAvatarList();
+  console.log('[HeyGen] streaming/avatar.list →', streamingList.length, 'avatars:');
+  console.table(streamingList.map((r) => ({ avatar_id: r.avatar_id, pose_name: r.pose_name, status: r.status })));
+
+  const candidates: string[] = [...AVATAR_CANDIDATES];
+
+  const salmaFromList = streamingList.filter(
+    (r) => /salma|headscarf|hijab/i.test(r.avatar_id + '|' + (r.pose_name || '')),
+  );
+  if (salmaFromList.length) {
+    console.log('[HeyGen] Salma matches in streaming list:', salmaFromList);
+    for (const r of salmaFromList) {
+      if (!candidates.includes(r.avatar_id)) candidates.push(r.avatar_id);
+    }
+  } else {
+    console.log('[HeyGen] No Salma/headscarf/hijab match in streaming list');
+  }
+
+  const groupIds = await fetchGroupLookIds();
+  if (groupIds.length) {
+    console.log('[HeyGen] Salma group look IDs:', groupIds);
+    for (const id of groupIds) {
+      if (!candidates.includes(id)) candidates.push(id);
+    }
+  }
+
+  if (streamingList.length) {
+    const first = streamingList[0].avatar_id;
+    if (!candidates.includes(first)) candidates.push(first);
+  }
+
+  console.log('[HeyGen] Avatar ID candidates (will try in order):', candidates);
+  return candidates;
+}
+
+/* ---------- Token ---------- */
+
 async function getSessionToken(): Promise<string> {
   const res = await fetch(`${HEYGEN_CONFIG.serverUrl}/v1/streaming.create_token`, {
     method: 'POST',
@@ -42,33 +143,22 @@ async function getSessionToken(): Promise<string> {
   });
   const data = await res.json();
   if (data?.data?.token) {
-    state.sessionToken = data.data.token;
-    return state.sessionToken;
+    const token = data.data.token as string;
+    state.sessionToken = token;
+    return token;
   }
   throw new Error('Failed to get session token');
 }
 
-export async function startSession(
-  videoEl: HTMLVideoElement,
-  onActive: () => void,
-  onDisconnect: () => void,
-  onTimerUpdate: (text: string) => void,
-  onTimerEnd: () => void,
-  customWelcome?: string,
-): Promise<void> {
-  if (!heygenReady() || state.active) return;
+/* ---------- Session ---------- */
 
-  await getSessionToken();
-
+async function tryStreamingNew(avatarId: string): Promise<any | null> {
   const body: any = {
     quality: 'high',
-    avatar_name: HEYGEN_CONFIG.avatarName,
+    avatar_id: avatarId,
     version: 'v2',
     video_encoding: 'H264',
-    background: {
-      type: 'color',
-      value: '#0f1729',
-    },
+    background: { type: 'color', value: '#0f1729' },
   };
   if (HEYGEN_CONFIG.voiceId) {
     body.voice = { voice_id: HEYGEN_CONFIG.voiceId, rate: 1.0 };
@@ -83,13 +173,62 @@ export async function startSession(
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  if (!json?.data) throw new Error(json.message || 'streaming.new failed');
+  if (json?.data) return json.data;
+  console.warn(`[HeyGen] streaming.new failed for "${avatarId}":`, json?.message || json?.error || json);
+  return null;
+}
 
-  state.sessionInfo = json.data;
+export async function startSession(
+  videoEl: HTMLVideoElement,
+  onActive: () => void,
+  onDisconnect: () => void,
+  onTimerUpdate: (text: string) => void,
+  onTimerEnd: () => void,
+  customWelcome?: string,
+): Promise<void> {
+  if (!heygenReady() || state.active) return;
+
+  await getSessionToken();
+
+  let candidates: string[];
+  if (state.resolvedAvatarId) {
+    candidates = [state.resolvedAvatarId];
+  } else {
+    candidates = await resolveSalmaAvatarCandidates();
+  }
+
+  let sessionData: any = null;
+  let usedId = '';
+
+  for (const id of candidates) {
+    console.log(`[HeyGen] Trying avatar_id: "${id}" …`);
+    sessionData = await tryStreamingNew(id);
+    if (sessionData) {
+      usedId = id;
+      state.resolvedAvatarId = id;
+      console.log(`[HeyGen] ✓ streaming.new succeeded with avatar_id: "${id}"`);
+      break;
+    }
+  }
+
+  if (!sessionData) {
+    const tried = candidates.join('", "');
+    console.error(
+      `[HeyGen] All avatar candidates failed. Tried: "${tried}"\n` +
+      'Salma may not be enabled as an Interactive Avatar on your account.\n' +
+      'Go to https://app.heygen.com/streaming-avatar → Select Avatar → find Salma and enable/upgrade her for streaming.',
+    );
+    throw new Error(
+      `Avatar not found. Tried ${candidates.length} IDs including Salma variants. ` +
+      'Check browser console [HeyGen] logs for the full streaming avatar list — ' +
+      'Salma must be enabled as an Interactive Avatar in your HeyGen dashboard.',
+    );
+  }
+
+  state.sessionInfo = sessionData;
   state.mediaStream = new MediaStream();
 
   const LivekitClient = await import('livekit-client');
-
   state.room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
 
   state.room.on(LivekitClient.RoomEvent.TrackSubscribed, (track: any) => {
@@ -133,6 +272,8 @@ export async function startSession(
   startTimer(onTimerUpdate, onTimerEnd);
 }
 
+/* ---------- Timer ---------- */
+
 function startTimer(onUpdate: (text: string) => void, onEnd: () => void) {
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.endAt = Date.now() + SESSION_DURATION_MS;
@@ -159,6 +300,8 @@ function stopTimer() {
   }
   state.endAt = 0;
 }
+
+/* ---------- Close / Interrupt / Speak ---------- */
 
 export async function closeSession(): Promise<void> {
   stopTimer();
