@@ -46,19 +46,19 @@ async function seed() {
   // Create events
   const mainEvent = await Event.create({
     name: "FutureFin Expo 2026",
-    date: new Date("2026-03-15T16:00:00"),
-    endDate: new Date("2026-03-15T23:00:00"),
+    date: new Date("2026-06-10T09:00:00"),
+    endDate: new Date("2026-06-12T18:00:00"),
     location: "Grand Meridian Convention Center, Dubai",
     description:
       "Premium FinTech event bringing together industry leaders, innovators, and visionaries.",
-    status: "ongoing",
+    status: "upcoming",
     organizationId: org._id,
   });
 
   const secondEvent = await Event.create({
     name: "FinTech Summit Dubai",
-    date: new Date("2026-04-22T09:00:00"),
-    endDate: new Date("2026-04-22T18:00:00"),
+    date: new Date("2026-06-25T09:00:00"),
+    endDate: new Date("2026-06-25T18:00:00"),
     location: "Jumeirah Beach Hotel",
     description: "Annual FinTech summit focusing on blockchain and digital payments.",
     status: "upcoming",
