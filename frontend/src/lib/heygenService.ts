@@ -152,7 +152,7 @@ async function getSessionToken(): Promise<string> {
 
 /* ---------- Session ---------- */
 
-async function tryStreamingNew(avatarId: string): Promise<any | null> {
+async function tryStreamingNew(avatarId: string, voiceId?: string): Promise<any | null> {
   const body: any = {
     quality: 'high',
     avatar_id: avatarId,
@@ -160,8 +160,9 @@ async function tryStreamingNew(avatarId: string): Promise<any | null> {
     video_encoding: 'H264',
     background: { type: 'color', value: '#0f1729' },
   };
-  if (HEYGEN_CONFIG.voiceId) {
-    body.voice = { voice_id: HEYGEN_CONFIG.voiceId, rate: 1.0 };
+  const effectiveVoice = (voiceId?.trim() || HEYGEN_CONFIG.voiceId || '').trim();
+  if (effectiveVoice) {
+    body.voice = { voice_id: effectiveVoice, rate: 1.0 };
   }
 
   const res = await fetch(`${HEYGEN_CONFIG.serverUrl}/v1/streaming.new`, {
@@ -185,13 +186,25 @@ export async function startSession(
   onTimerUpdate: (text: string) => void,
   onTimerEnd: () => void,
   customWelcome?: string,
+  /** When set, start only this avatar (e.g. male); omit for default female candidate chain */
+  avatarIdOverride?: string,
+  /** When set (e.g. male voice), used for streaming.new; otherwise default kiosk voice */
+  voiceIdOverride?: string,
 ): Promise<void> {
-  if (!heygenReady() || state.active) return;
+  if (!heygenReady()) return;
+
+  // Ensure any previous session is torn down (e.g. gender toggle while in chat)
+  if (state.active || state.sessionInfo || state.room) {
+    await closeSession();
+  }
 
   await getSessionToken();
 
   let candidates: string[];
-  if (state.resolvedAvatarId) {
+  if (avatarIdOverride?.trim()) {
+    state.resolvedAvatarId = null;
+    candidates = [avatarIdOverride.trim()];
+  } else if (state.resolvedAvatarId) {
     candidates = [state.resolvedAvatarId];
   } else {
     candidates = await resolveSalmaAvatarCandidates();
@@ -202,7 +215,7 @@ export async function startSession(
 
   for (const id of candidates) {
     console.log(`[HeyGen] Trying avatar_id: "${id}" …`);
-    sessionData = await tryStreamingNew(id);
+    sessionData = await tryStreamingNew(id, voiceIdOverride);
     if (sessionData) {
       usedId = id;
       state.resolvedAvatarId = id;
@@ -307,6 +320,7 @@ export async function closeSession(): Promise<void> {
   stopTimer();
   if (!state.sessionInfo) {
     state.active = false;
+    state.resolvedAvatarId = null;
     return;
   }
   try {
@@ -329,6 +343,7 @@ export async function closeSession(): Promise<void> {
   state.sessionInfo = null;
   state.mediaStream = null;
   state.active = false;
+  state.resolvedAvatarId = null;
 }
 
 export function interruptAvatar(): void {

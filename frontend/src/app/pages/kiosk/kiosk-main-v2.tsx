@@ -8,6 +8,35 @@ import * as heygenService from "../../../lib/heygenService";
 import * as voiceService from "../../../lib/voiceService";
 import { fetchGeneralChatResponse, fetchUserChatResponse, type UserProfile } from "../../../lib/kioskChat";
 import { useChromaKey } from "../../hooks/useChromaKey";
+
+/** HeyGen streaming avatar IDs — female uses default resolution chain when override omitted */
+const MALE_AVATAR_HEYGEN_ID = "Graham_Black_Suit_public";
+const MALE_VOICE_HEYGEN_ID = "61a4359785664d01a59664ceb87ce6d4";
+
+type KioskVoiceLang = "en-US" | "ar";
+
+function kioskChatWelcomeText(lang: KioskVoiceLang): string {
+  if (lang === "ar") {
+    return "مرحبًا بك في معرض فيوتشرفين 2026! أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟";
+  }
+  return "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
+}
+
+function kioskWelcomeGreetingText(firstName: string, lang: KioskVoiceLang): string {
+  if (lang === "ar") {
+    return `مرحبًا ${firstName}! لقد تم تسجيل دخولك. كيف يمكنني مساعدتك؟`;
+  }
+  return `Hi ${firstName}! You're checked in. How can I help you?`;
+}
+
+function kioskTimeGreeting(lang: KioskVoiceLang): string {
+  const hour = new Date().getHours();
+  if (lang === "ar") {
+    return hour < 12 ? "صباح الخير" : "مساء الخير";
+  }
+  return hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+}
+
 const aiAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2322D3EE'/%3E%3Cstop offset='100%25' stop-color='%238B5CF6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23g)'/%3E%3Ctext x='100' y='115' text-anchor='middle' font-size='64' fill='white' font-family='sans-serif'%3EAI%3C/text%3E%3C/svg%3E";
 
 function SmileyLoader() {
@@ -383,6 +412,7 @@ export function KioskMain() {
   const [heygenActive, setHeygenActive] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [voiceLang, setVoiceLang] = useState<'ar' | 'en-US'>('en-US');
+  const [avatarGender, setAvatarGender] = useState<"female" | "male">("female");
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [manualError, setManualError] = useState<string | null>(null);
 
@@ -454,51 +484,60 @@ export function KioskMain() {
     return () => stopCamera();
   }, [state]);
 
-  // Start/stop HeyGen session when entering/leaving chat or welcome states
+  // Start/stop HeyGen session when entering/leaving chat or welcome states (or avatar gender changes)
   useEffect(() => {
     const shouldConnect = (state === "chat" || state === "welcome") && heygenService.heygenReady() && heygenVideoRef.current;
 
+    let cancelled = false;
+
     if (shouldConnect) {
-      const chatWelcome = "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
+      const chatWelcome = kioskChatWelcomeText(voiceLang);
       const welcomeGreeting = userData
-        ? `Hi ${userData.fullName.split(" ")[0]}! You're checked in. How can I help you?`
+        ? kioskWelcomeGreetingText(userData.fullName.split(" ")[0], voiceLang)
         : chatWelcome;
 
       const customWelcome = state === "welcome" ? welcomeGreeting : chatWelcome;
+      const avatarIdOverride = avatarGender === "male" ? MALE_AVATAR_HEYGEN_ID : undefined;
+      const voiceIdOverride = avatarGender === "male" ? MALE_VOICE_HEYGEN_ID : undefined;
 
-      heygenService.startSession(
-        heygenVideoRef.current!,
-        () => setHeygenActive(true),
-        () => setHeygenActive(false),
-        () => { },
-        () => { heygenService.closeSession().catch(() => { }); setHeygenActive(false); },
-        customWelcome,
-      ).catch(console.error);
+      void (async () => {
+        await heygenService.closeSession().catch(() => { });
+        if (cancelled || !heygenVideoRef.current) return;
+        await heygenService.startSession(
+          heygenVideoRef.current,
+          () => setHeygenActive(true),
+          () => setHeygenActive(false),
+          () => { },
+          () => { heygenService.closeSession().catch(() => { }); setHeygenActive(false); },
+          customWelcome,
+          avatarIdOverride,
+          voiceIdOverride,
+        ).catch(console.error);
+      })();
     }
 
     return () => {
+      cancelled = true;
       if (shouldConnect) {
         heygenService.closeSession().catch(() => { });
         setHeygenActive(false);
       }
     };
-  }, [state, userData]);
+  }, [state, userData, avatarGender, voiceLang]);
 
-  // Auto-start chat welcome message
+  // Auto-start / sync chat welcome message with language toggle
   useEffect(() => {
-    if (state === "chat" && conversation.length === 0) {
-      const greeting = "Welcome to FutureFin Expo 2026! I'm your AI assistant. How can I help you today?";
-      setConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
-    }
-  }, [state]);
+    if (state !== "chat") return;
+    const greeting = kioskChatWelcomeText(voiceLang);
+    setConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
+  }, [state, voiceLang]);
 
-  // Auto-start welcome conversation when user checks in
+  // Auto-start / sync welcome conversation with language toggle
   useEffect(() => {
-    if (state === "welcome" && userData && welcomeConversation.length === 0) {
-      const greeting = `Hi ${userData.fullName.split(" ")[0]}! You're checked in. How can I help you?`;
-      setWelcomeConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
-    }
-  }, [state, userData]);
+    if (state !== "welcome" || !userData) return;
+    const greeting = kioskWelcomeGreetingText(userData.fullName.split(" ")[0], voiceLang);
+    setWelcomeConversation([{ type: "assistant", text: greeting, timestamp: new Date() }]);
+  }, [state, userData, voiceLang]);
 
   const sendGeneralMessage = useCallback(async (message: string) => {
     heygenService.interruptAvatar();
@@ -773,6 +812,8 @@ export function KioskMain() {
     setScanMessage(null);
     setScanProgress(0);
     setIsScanning(false);
+    setAvatarGender("female");
+    setVoiceLang("en-US");
     setState("menu");
   }, []);
 
@@ -1173,7 +1214,7 @@ export function KioskMain() {
                             }}
                           >
                             {heygenActive ? (
-                              <canvas ref={chromaCanvasRef} className="w-full h-full object-contain" style={{ background: '#0f1729', transform: 'scale(2.0)' }} />
+                              <canvas ref={chromaCanvasRef} className="h-full w-full max-h-full object-cover" style={{ background: '#0f1729' }} />
                             ) : (
                               <SmileyLoader />
                             )}
@@ -1246,6 +1287,28 @@ export function KioskMain() {
                               }}
                             />
                           ))}
+                        </div>
+
+                        {/* Avatar gender — below avatar, left column */}
+                        <div className="flex justify-start mt-2 flex-shrink-0">
+                          <div className="h-11 rounded-[20px] border-2 border-white/20 flex items-center p-0.5 shrink-0 overflow-hidden" title="Avatar">
+                            <button
+                              type="button"
+                              onClick={() => setAvatarGender("female")}
+                              onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                              className={`h-full px-2.5 rounded-[16px] font-black text-sm leading-none transition-all cursor-pointer ${avatarGender === "female" ? "bg-white/20 text-white" : "text-white/40"}`}
+                              style={{ touchAction: "manipulation" }}
+                              aria-label="Female avatar"
+                            >F</button>
+                            <button
+                              type="button"
+                              onClick={() => setAvatarGender("male")}
+                              onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                              className={`h-full px-2.5 rounded-[16px] font-black text-sm leading-none transition-all cursor-pointer ${avatarGender === "male" ? "bg-white/20 text-white" : "text-white/40"}`}
+                              style={{ touchAction: "manipulation" }}
+                              aria-label="Male avatar"
+                            >M</button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1488,7 +1551,7 @@ export function KioskMain() {
                             }}
                           >
                             {heygenActive ? (
-                              <canvas ref={chromaCanvasRef} className="w-full h-full object-contain" style={{ background: '#0f1729', transform: 'scale(2.0)' }} />
+                              <canvas ref={chromaCanvasRef} className="h-full w-full max-h-full object-cover" style={{ background: '#0f1729' }} />
                             ) : (
                               <SmileyLoader />
                             )}
@@ -1538,6 +1601,28 @@ export function KioskMain() {
                             />
                           ))}
                         </div>
+
+                        {/* Avatar gender — below avatar, left column */}
+                        <div className="flex justify-start mt-2 flex-shrink-0">
+                          <div className="h-11 rounded-[20px] border-2 border-white/20 flex items-center p-0.5 shrink-0 overflow-hidden" title="Avatar">
+                            <button
+                              type="button"
+                              onClick={() => setAvatarGender("female")}
+                              onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                              className={`h-full px-2.5 rounded-[16px] font-black text-sm leading-none transition-all cursor-pointer ${avatarGender === "female" ? "bg-white/20 text-white" : "text-white/40"}`}
+                              style={{ touchAction: "manipulation" }}
+                              aria-label="Female avatar"
+                            >F</button>
+                            <button
+                              type="button"
+                              onClick={() => setAvatarGender("male")}
+                              onTouchEnd={(e) => { e.preventDefault(); e.currentTarget.click(); }}
+                              className={`h-full px-2.5 rounded-[16px] font-black text-sm leading-none transition-all cursor-pointer ${avatarGender === "male" ? "bg-white/20 text-white" : "text-white/40"}`}
+                              style={{ touchAction: "manipulation" }}
+                              aria-label="Male avatar"
+                            >M</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -1549,15 +1634,17 @@ export function KioskMain() {
                         initial={{ opacity: 1 }}
                         animate={{ opacity: 1 }}
                         className="mb-2 flex-shrink-0"
+                        dir={voiceLang === "ar" ? "rtl" : "ltr"}
                       >
                         <h3 className="text-xl font-black text-[#22D3EE] mb-1 leading-tight">
-                          {(() => {
-                            const hour = new Date().getHours();
-                            return hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-                          })()}, {userData.fullName.split(" ")[0]}!
+                          {voiceLang === "ar"
+                            ? `${kioskTimeGreeting(voiceLang)}، ${userData.fullName.split(" ")[0]}!`
+                            : `${kioskTimeGreeting(voiceLang)}, ${userData.fullName.split(" ")[0]}!`}
                         </h3>
                         <p className="text-[#ffffff] opacity-60 text-sm font-medium">
-                          Welcome to FutureFin Expo 2026 • Check-in successful
+                          {voiceLang === "ar"
+                            ? "مرحبًا بك في معرض فيوتشرفين 2026 • تم تسجيل الدخول بنجاح"
+                            : "Welcome to FutureFin Expo 2026 • Check-in successful"}
                         </p>
                       </motion.div>
 
@@ -1640,12 +1727,16 @@ export function KioskMain() {
 
                           {/* Empty State */}
                           {welcomeConversation.length === 0 && !isSpeaking && !isListening && (
-                            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                            <div className={`flex flex-col items-center justify-center h-full text-center py-12 ${voiceLang === "ar" ? "rtl" : ""}`}>
                               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#34D399]/20 to-[#22D3EE]/20 border border-white/10 flex items-center justify-center mb-4">
                                 <Mic className="w-7 h-7 text-[#34D399]" />
                               </div>
-                              <p className="text-white/60 text-sm font-medium mb-1">AI Assistant is ready</p>
-                              <p className="text-white/40 text-xs">Tap to speak below to start the conversation</p>
+                              <p className="text-white/60 text-sm font-medium mb-1">
+                                {voiceLang === "ar" ? "المساعد الذكي جاهز" : "AI Assistant is ready"}
+                              </p>
+                              <p className="text-white/40 text-xs">
+                                {voiceLang === "ar" ? "اضغط على الميكروفون أدناه لبدء المحادثة" : "Tap to speak below to start the conversation"}
+                              </p>
                             </div>
                           )}
                         </div>
