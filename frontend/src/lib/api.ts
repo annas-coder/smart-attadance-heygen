@@ -1,10 +1,19 @@
 const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api`;
 
+/**
+ * Face images are loaded with crossOrigin="anonymous" for PDF capture. Raw `/uploads/...` on the API
+ * host is often served by nginx without CORS; use `/api/public-uploads/...` so Express + cors() apply.
+ */
 export function resolveUploadUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith("data:") || path.startsWith("http")) return path;
   const base = import.meta.env.VITE_API_URL || "";
-  return `${base}${path}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const m = normalized.match(/^\/uploads\/(.+)$/);
+  if (m) {
+    return `${base}/api/public-uploads/${m[1]}`;
+  }
+  return `${base}${normalized}`;
 }
 
 function getAuthHeaders(): Record<string, string> {

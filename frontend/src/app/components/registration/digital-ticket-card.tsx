@@ -5,9 +5,7 @@ import {
   Phone,
   Linkedin,
   MapPin,
-  Clock,
   Briefcase,
-  Calendar,
 } from "lucide-react";
 import type { TicketDisplay } from "../../../lib/ticketDisplay";
 
@@ -188,36 +186,6 @@ export const DigitalTicketCard = forwardRef<HTMLDivElement, DigitalTicketCardPro
             </div>
           ) : null}
         </div>
-
-        {ticket.agendaSessions.length > 0 ? (
-          <div className="mb-6 border-t border-[#E2E8F0] pt-6">
-            <p className="text-sm font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#22D3EE]" />
-              Your agenda
-            </p>
-            <ul className="space-y-3">
-              {ticket.agendaSessions.map((s, i) => (
-                <li key={`${s.title}-${i}`} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
-                  <p className="font-medium text-[#0F172A]">{s.title}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-[#64748B]">
-                    {s.time ? (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {s.time}
-                      </span>
-                    ) : null}
-                    {s.location ? (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {s.location}
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
         <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-6">
           <div>

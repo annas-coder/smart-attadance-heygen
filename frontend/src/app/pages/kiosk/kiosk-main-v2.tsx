@@ -935,9 +935,9 @@ export function KioskMain() {
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="h-full w-full min-h-0 flex flex-col items-stretch px-4 sm:px-6 pt-20 pb-6"
+                  className="h-full w-full min-h-0 flex flex-col items-center justify-center px-4 sm:px-6 pt-20 pb-6"
                 >
-                  <div className="w-full h-full min-h-0 flex flex-col gap-3 flex-1">
+                  <div className="w-full max-w-[min(92vw,420px)] flex flex-col gap-3 items-center shrink-0">
                     {/* Status badge: above video so it never overlaps the frame */}
                     <div className="flex justify-center shrink-0">
                       <div className="flex items-center bg-black/80 px-3 py-1.5 rounded-full border border-white/20">
@@ -946,7 +946,8 @@ export function KioskMain() {
                       </div>
                     </div>
 
-                    <div className="relative rounded-[20px] overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.3)] border border-white/10 flex-1 min-h-0 max-h-[calc(100vh-240px)]">
+                    {/* Portrait frame sized for face alignment only — not full viewport */}
+                    <div className="relative w-full aspect-[320/420] max-h-[min(58vh,520px)] rounded-[20px] overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.3)] border border-white/10">
                       <video
                         ref={videoRef}
                         autoPlay

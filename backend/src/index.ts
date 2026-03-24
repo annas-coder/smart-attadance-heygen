@@ -22,14 +22,20 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  "/uploads",
-  (_req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    next();
-  },
-  express.static(path.join(__dirname, "..", "uploads"))
-);
+/**
+ * Static uploads must send CORS headers for cross-origin <img crossorigin="anonymous"> (ticket PDF capture).
+ * If a reverse proxy serves /uploads from disk, it must add the same headers (see nginx-uploads-cors.conf.example).
+ */
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);

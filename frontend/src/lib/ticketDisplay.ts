@@ -1,24 +1,5 @@
 import type { TicketSharePayload } from "./ticketActions";
 
-/** Matches default agenda assigned in backend `confirmRegistration`. */
-export const DEFAULT_TICKET_AGENDA_SESSIONS: Array<{ title: string; location: string; time: string }> = [
-  {
-    title: "Keynote: Future of Financial Technology",
-    location: "Grand Ballroom, Floor 2",
-    time: "2:00 PM - 3:00 PM",
-  },
-  {
-    title: "Networking Break",
-    location: "Exhibition Hall",
-    time: "3:30 PM - 4:00 PM",
-  },
-  {
-    title: "AI in Finance Panel",
-    location: "Conference Room A, Floor 3",
-    time: "4:00 PM - 5:00 PM",
-  },
-];
-
 export interface TicketDisplay {
   fullName: string;
   email: string;
@@ -106,7 +87,7 @@ export function mapSessionFormToTicketDisplay(
     status: "Registered",
     registeredAt: null,
     checkedInAt: null,
-    agendaSessions: DEFAULT_TICKET_AGENDA_SESSIONS,
+    agendaSessions: [],
     event: options.event
       ? {
           name: options.event.name,
