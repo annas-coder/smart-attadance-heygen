@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Home, Download, Calendar, Share2, AlertCircle } from "lucide-react";
 import { registration, kiosk, resolveUploadUrl } from "../../../lib/api";
+import { useRegistrationEventName } from "../../../lib/useRegistrationEventName";
 import {
   downloadTicketPdf,
   downloadEventCalendar,
@@ -16,6 +17,7 @@ import { DigitalTicketCard } from "../../components/registration/digital-ticket-
 
 export function ViewTicket() {
   const ticketCardRef = useRef<HTMLDivElement>(null);
+  const fallbackEventName = useRegistrationEventName();
   const [searchParams] = useSearchParams();
   const [searchMethod, setSearchMethod] = useState<"email" | "id">("email");
   const [searchValue, setSearchValue] = useState("");
@@ -64,14 +66,19 @@ export function ViewTicket() {
     await loadTicket(searchMethod, searchValue);
   };
 
+  const headerEventName = ticketData?.event?.name ?? fallbackEventName ?? "Event";
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Plus_Jakarta_Sans']">
       {/* Header */}
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-[#0F172A]">
-            <Home className="w-5 h-5" />
-            <span className="font-bold">Home</span>
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
+          >
+            <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
+            <span className="font-bold truncate">{headerEventName}</span>
           </Link>
           <Link
             to="/"

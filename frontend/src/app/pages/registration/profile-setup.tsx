@@ -1,7 +1,47 @@
 import { Link, useNavigate } from "react-router";
 import { useState, useEffect, useCallback } from "react";
-import { Check, Home, AlertCircle } from "lucide-react";
+import { Check, Calendar, AlertCircle } from "lucide-react";
 import { registration, events as eventsApi, ApiError } from "../../../lib/api";
+import { useRegistrationEventName } from "../../../lib/useRegistrationEventName";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+
+const INDUSTRY_OPTIONS = [
+  { value: "banking", label: "Banking" },
+  { value: "fintech", label: "FinTech" },
+  { value: "crypto", label: "Cryptocurrency" },
+  { value: "insurance", label: "Insurance" },
+  { value: "payments", label: "Payments" },
+  { value: "other", label: "Other" },
+] as const;
+
+const COUNTRY_OPTIONS = [
+  { value: "uae", label: "United Arab Emirates" },
+  { value: "sa", label: "Saudi Arabia" },
+  { value: "in", label: "India" },
+  { value: "uk", label: "United Kingdom" },
+  { value: "us", label: "United States" },
+  { value: "other", label: "Other" },
+] as const;
+
+const INDUSTRY_EMPTY = "__industry_empty__";
+
+const selectTriggerClass =
+  "w-full h-auto min-h-[48px] py-3 px-4 rounded-full border border-[#E2E8F0] bg-white text-[#0F172A] shadow-none " +
+  "hover:bg-[#F8FAFC] focus:border-[#22D3EE] focus:ring-2 focus:ring-[#22D3EE]/20 focus-visible:ring-2 focus-visible:ring-[#22D3EE]/25 " +
+  "[&_svg]:text-[#64748B] [&_svg]:mr-1 data-[placeholder]:text-[#94A3B8]";
+
+const selectContentClass =
+  "rounded-[14px] border border-[#E2E8F0] bg-white p-1.5 shadow-lg";
+
+const selectItemClass =
+  "rounded-[10px] py-2.5 pl-3 pr-8 text-[#0F172A] cursor-pointer " +
+  "focus:bg-[#ECFEFF] focus:text-[#0F172A] data-[highlighted]:bg-[#ECFEFF] data-[state=checked]:bg-[#ECFEFF]";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -9,6 +49,7 @@ function isValidEmail(value: string): boolean {
 
 export function ProfileSetup() {
   const navigate = useNavigate();
+  const eventName = useRegistrationEventName();
   const [eventId, setEventId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
@@ -29,10 +70,13 @@ export function ProfileSetup() {
   });
 
   useEffect(() => {
+    const storedId = sessionStorage.getItem("eventId");
     eventsApi
       .listPublic()
       .then((evts) => {
-        if (evts.length > 0) setEventId(evts[0]._id);
+        if (evts.length === 0) return;
+        const match = storedId ? evts.find((e: { _id: string }) => e._id === storedId) : undefined;
+        setEventId((match ?? evts[0])._id);
       })
       .catch(() => {});
   }, []);
@@ -113,9 +157,12 @@ export function ProfileSetup() {
     <div className="min-h-screen bg-[#F8FAFC] font-['Plus_Jakarta_Sans']">
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-[#0F172A]">
-            <Home className="w-5 h-5" />
-            <span className="font-bold">Home</span>
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
+          >
+            <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
+            <span className="font-bold truncate">{eventName ?? "Event"}</span>
           </Link>
         </div>
       </header>
@@ -133,7 +180,7 @@ export function ProfileSetup() {
             <div className="flex items-center">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-[#E2E8F0] text-[#64748B] flex items-center justify-center font-bold">2</div>
-                <span className="text-sm font-medium text-[#64748B]">Face Capture</span>
+                <span className="text-sm font-medium text-[#64748B] whitespace-nowrap">Face Capture</span>
               </div>
             </div>
             <div className="w-20 h-0.5 bg-[#E2E8F0] mx-2"></div>
@@ -216,27 +263,54 @@ export function ProfileSetup() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[#0F172A] mb-2">Industry</label>
-                  <select value={formData.industry} onChange={(e) => setFormData({ ...formData, industry: e.target.value })} className="w-full px-4 py-3 rounded-full border border-[#E2E8F0] focus:outline-none focus:border-[#22D3EE] bg-white">
-                    <option value="">Select industry</option>
-                    <option value="banking">Banking</option>
-                    <option value="fintech">FinTech</option>
-                    <option value="crypto">Cryptocurrency</option>
-                    <option value="insurance">Insurance</option>
-                    <option value="payments">Payments</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <Select
+                    value={formData.industry === "" ? INDUSTRY_EMPTY : formData.industry}
+                    onValueChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        industry: v === INDUSTRY_EMPTY ? "" : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger className={selectTriggerClass}>
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent className={selectContentClass} position="popper" sideOffset={6}>
+                      <SelectItem value={INDUSTRY_EMPTY} className={selectItemClass}>
+                        Select industry
+                      </SelectItem>
+                      {INDUSTRY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className={selectItemClass}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#0F172A] mb-2">Country <span className="text-[#FB7185]">*</span></label>
-                  <select required value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full px-4 py-3 rounded-full border border-[#E2E8F0] focus:outline-none focus:border-[#22D3EE] bg-white">
-                    <option value="">Select country</option>
-                    <option value="uae">United Arab Emirates</option>
-                    <option value="sa">Saudi Arabia</option>
-                    <option value="in">India</option>
-                    <option value="uk">United Kingdom</option>
-                    <option value="us">United States</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <label className="block text-sm font-medium text-[#0F172A] mb-2" id="country-label">
+                    Country <span className="text-[#FB7185]">*</span>
+                  </label>
+                  <Select
+                    value={formData.country || undefined}
+                    onValueChange={(v) => setFormData({ ...formData, country: v })}
+                    required
+                  >
+                    <SelectTrigger
+                      className={selectTriggerClass}
+                      aria-labelledby="country-label"
+                      aria-required
+                    >
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className={selectContentClass} position="popper" sideOffset={6}>
+                      {COUNTRY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className={selectItemClass}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="pt-6 flex gap-4">

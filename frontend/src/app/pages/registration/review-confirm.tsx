@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
-import { Check, Edit, Home } from "lucide-react";
+import { Check, Edit, Calendar } from "lucide-react";
 import { registration, events } from "../../../lib/api";
 
 export function ReviewConfirm() {
@@ -20,9 +20,15 @@ export function ReviewConfirm() {
     if (data) setFormData(JSON.parse(data));
     if (image) setFaceImage(image);
 
-    events.listPublic().then((list) => {
-      if (list.length > 0) setEventData(list[0]);
-    }).catch(() => {});
+    events
+      .listPublic()
+      .then((list) => {
+        if (list.length === 0) return;
+        const storedId = sessionStorage.getItem("eventId");
+        const ev = storedId ? list.find((e: { _id: string }) => e._id === storedId) ?? list[0] : list[0];
+        setEventData(ev);
+      })
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async () => {
@@ -52,9 +58,12 @@ export function ReviewConfirm() {
       {/* Header */}
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-[#0F172A]">
-            <Home className="w-5 h-5" />
-            <span className="font-bold">Home</span>
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
+          >
+            <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
+            <span className="font-bold truncate">{eventData?.name ?? "Event"}</span>
           </Link>
         </div>
       </header>
@@ -77,7 +86,7 @@ export function ReviewConfirm() {
                 <div className="w-8 h-8 rounded-full bg-[#34D399] text-white flex items-center justify-center">
                   <Check className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-medium text-[#34D399]">
+                <span className="text-sm font-medium text-[#34D399] whitespace-nowrap">
                   Face Capture
                 </span>
               </div>

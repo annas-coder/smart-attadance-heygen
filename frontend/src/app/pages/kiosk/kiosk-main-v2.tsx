@@ -989,7 +989,7 @@ export function KioskMain() {
                     {/* Status badge: above video so it never overlaps the frame */}
                     <div className="flex justify-center shrink-0">
                       <div className="flex items-center bg-black/80 px-3 py-1.5 rounded-full border border-white/20">
-                        <div className={`w-2 h-2 rounded-full mr-2 ${isScanning ? 'bg-[#22D3EE] animate-pulse' : 'bg-[#34D399]'}`} />
+                        <div className={`w-2 h-2 rounded-full mr-2 ${isScanning ? 'bg-[#22D3EE] animate-pulse' : 'bg-white/50'}`} />
                         <span className="text-xs font-bold text-white">{isScanning ? `Scanning ${scanProgress}%` : 'Ready'}</span>
                       </div>
                     </div>
@@ -1192,19 +1192,19 @@ export function KioskMain() {
                           transition={{ delay: 0.1, type: "spring" }}
                           className="relative flex-1 min-h-0"
                         >
-                          {/* Avatar Frame with Dynamic Border */}
+                          {/* Avatar frame — neutral border (no status colour on stroke) */}
                           <motion.div
                             className="relative w-full h-full rounded-[32px] overflow-hidden border-2"
                             animate={{
                               borderColor: isSpeaking
-                                ? ["rgba(34, 211, 238, 0.3)", "rgba(34, 211, 238, 0.6)", "rgba(34, 211, 238, 0.3)"]
+                                ? ["rgba(255, 255, 255, 0.18)", "rgba(255, 255, 255, 0.4)", "rgba(255, 255, 255, 0.18)"]
                                 : isListening
-                                  ? ["rgba(139, 92, 246, 0.3)", "rgba(139, 92, 246, 0.6)", "rgba(139, 92, 246, 0.3)"]
+                                  ? ["rgba(255, 255, 255, 0.14)", "rgba(255, 255, 255, 0.34)", "rgba(255, 255, 255, 0.14)"]
                                   : "rgba(255, 255, 255, 0.1)",
                               boxShadow: isSpeaking
-                                ? ["0 0 15px rgba(34, 211, 238, 0.1)", "0 0 25px rgba(34, 211, 238, 0.2)", "0 0 15px rgba(34, 211, 238, 0.1)"]
+                                ? ["0 0 14px rgba(255,255,255,0.07)", "0 0 22px rgba(255,255,255,0.12)", "0 0 14px rgba(255,255,255,0.07)"]
                                 : isListening
-                                  ? ["0 0 15px rgba(139, 92, 246, 0.1)", "0 0 25px rgba(139, 92, 246, 0.2)", "0 0 15px rgba(139, 92, 246, 0.1)"]
+                                  ? ["0 0 12px rgba(255,255,255,0.06)", "0 0 20px rgba(255,255,255,0.1)", "0 0 12px rgba(255,255,255,0.06)"]
                                   : "0 0 10px rgba(255, 255, 255, 0.05)"
                             }}
                             transition={{
@@ -1230,30 +1230,6 @@ export function KioskMain() {
                                 repeat: isSpeaking ? Infinity : 0
                               }}
                             />
-
-                            {/* Status Badge */}
-                            <div className="absolute top-6 right-6">
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="flex items-center bg-black/90 px-4 py-2.5 rounded-full border shadow-lg"
-                                style={{
-                                  borderColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "rgba(52, 211, 153, 0.5)"
-                                }}
-                              >
-                                <motion.div
-                                  animate={{
-                                    scale: isSpeaking || isListening ? [1, 1.3, 1] : 1,
-                                    backgroundColor: isSpeaking ? "#22D3EE" : isListening ? "#8B5CF6" : "#34D399"
-                                  }}
-                                  transition={{ duration: 1, repeat: isSpeaking || isListening ? Infinity : 0 }}
-                                  className="w-2.5 h-2.5 rounded-full mr-2"
-                                />
-                                <span className="text-xs font-black text-white tracking-wider">
-                                  {isSpeaking ? "SPEAKING" : isListening ? "LISTENING" : "READY"}
-                                </span>
-                              </motion.div>
-                            </div>
                           </motion.div>
 
                         </motion.div>
@@ -1538,11 +1514,15 @@ export function KioskMain() {
                           transition={{ delay: 0.1, type: "spring" }}
                           className="relative flex-1 min-h-0"
                         >
-                          {/* Avatar Frame with Success Glow */}
+                          {/* Avatar frame — neutral border */}
                           <motion.div
-                            className="relative w-full h-full rounded-[32px] overflow-hidden border-2 border-[#34D399]/40"
+                            className="relative w-full h-full rounded-[32px] overflow-hidden border-2 border-white/15"
                             animate={{
-                              boxShadow: ["0 0 20px rgba(52, 211, 153, 0.1)", "0 0 30px rgba(52, 211, 153, 0.2)", "0 0 20px rgba(52, 211, 153, 0.1)"]
+                              boxShadow: [
+                                "0 0 16px rgba(255, 255, 255, 0.05)",
+                                "0 0 22px rgba(255, 255, 255, 0.08)",
+                                "0 0 16px rgba(255, 255, 255, 0.05)"
+                              ]
                             }}
                             transition={{
                               duration: 3,
@@ -1558,28 +1538,11 @@ export function KioskMain() {
 
                             {/* Dynamic Gradient Overlay */}
                             <div className={`absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50 pointer-events-none ${heygenActive ? '' : 'opacity-0'}`} />
-
-                            {/* Success Badge */}
-                            <div className="absolute top-6 right-6">
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ delay: 0.5, type: "spring" }}
-                                className="flex items-center bg-black/90 px-4 py-2.5 rounded-full border border-[#34D399] shadow-lg"
-                              >
-                                <motion.div
-                                  animate={{ scale: [1, 1.2, 1] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                  className="w-2.5 h-2.5 rounded-full bg-[#34D399] mr-2"
-                                />
-                                <span className="text-xs font-black text-[#34D399] tracking-wider">CHECKED IN</span>
-                              </motion.div>
-                            </div>
                           </motion.div>
 
                         </motion.div>
 
-                        {/* Sound Wave Visualization - Success Theme */}
+                        {/* Sound wave — neutral tones */}
                         <div className="flex items-center justify-center mt-3 flex-shrink-0">
                           {[...Array(9)].map((_, i) => (
                             <motion.div
@@ -1587,7 +1550,7 @@ export function KioskMain() {
                               className="w-1.5 rounded-full mx-[3px]"
                               animate={{
                                 height: [4, 16, 4],
-                                backgroundColor: ["#34D399", "#22D3EE", "#34D399"]
+                                backgroundColor: ["rgba(148, 163, 184, 0.85)", "#22D3EE", "rgba(148, 163, 184, 0.85)"]
                               }}
                               transition={{
                                 duration: 1.5,
@@ -1656,10 +1619,9 @@ export function KioskMain() {
                         className="flex-1 min-h-0 mb-4 rounded-[32px] bg-[#1e293b] border border-white/10 overflow-hidden flex flex-col relative z-10"
                         style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
                       >
-                        {/* Conversation Header */}
                         <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between">
                           <div className="flex items-center">
-                            <div className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse mr-3"></div>
+                            <div className="w-2 h-2 rounded-full bg-white/40 animate-pulse mr-3"></div>
                             <h4 className="text-sm font-black text-white/70 uppercase tracking-wider">Live Conversation</h4>
                           </div>
                           <span className="text-xs font-mono text-white/50">
@@ -1717,7 +1679,7 @@ export function KioskMain() {
                                       key={i}
                                       animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.2, 1] }}
                                       transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                                      className="w-2 h-2 rounded-full bg-[#34D399] mx-[3px]"
+                                      className="w-2 h-2 rounded-full bg-white/50 mx-[3px]"
                                     />
                                   ))}
                                 </div>
@@ -1728,8 +1690,8 @@ export function KioskMain() {
                           {/* Empty State */}
                           {welcomeConversation.length === 0 && !isSpeaking && !isListening && (
                             <div className={`flex flex-col items-center justify-center h-full text-center py-12 ${voiceLang === "ar" ? "rtl" : ""}`}>
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#34D399]/20 to-[#22D3EE]/20 border border-white/10 flex items-center justify-center mb-4">
-                                <Mic className="w-7 h-7 text-[#34D399]" />
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center mb-4">
+                                <Mic className="w-7 h-7 text-white/50" />
                               </div>
                               <p className="text-white/60 text-sm font-medium mb-1">
                                 {voiceLang === "ar" ? "المساعد الذكي جاهز" : "AI Assistant is ready"}

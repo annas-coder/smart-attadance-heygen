@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Calendar, MapPin, Users, Award, Building2, TrendingUp, Home } from "lucide-react";
+import { Calendar, MapPin, Users, Award, Building2, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { events } from "../../../lib/api";
 
@@ -46,9 +46,12 @@ export function RegistrationLanding() {
       {/* Header */}
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-[#0F172A]">
-            <Home className="w-5 h-5" />
-            <span className="font-bold">Home</span>
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#0F172A] min-w-0 max-w-[min(100%,18rem)] sm:max-w-md"
+          >
+            <Calendar className="w-5 h-5 shrink-0 text-[#22D3EE]" />
+            <span className="font-bold truncate">{eventData?.name ?? "Event"}</span>
           </Link>
           <p className="text-sm text-[#64748B]">
             Already registered?{" "}
